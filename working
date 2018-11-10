@@ -247,6 +247,17 @@ famconf_all$edu_16[famconf_all$tb4_a16_p==4] <- 3  # senior high
 famconf_all$edu_16[famconf_all$tb4_a16_p>=5] <- 4  # college or above
 table(famconf_all$edu_16, useNA = "always")
 
+
+# an alternative variable for education which has less missing value:  cfps2010edu_best
+
+table(famconf_all$cfps2010edu_best, useNA = "always")
+famconf_all$educ_10 <- NA
+famconf_all$educ_10[famconf_all$cfps2010edu_best==1 | famconf_all$cfps2010edu_best==2] <- 1 # primary school or below
+famconf_all$educ_10[famconf_all$cfps2010edu_best==3] <- 2  # junior high
+famconf_all$educ_10[famconf_all$cfps2010edu_best==4] <- 3  # senior high
+famconf_all$educ_10[famconf_all$cfps2010edu_best>=5] <- 4  # college or above
+table(famconf_all$educ_10, useNA = "always")
+
 adult12 <- read_dta("/Users/Ang/Desktop/data/cfps2012adultcombined_092015compress.dta")
 adult12 <- adult12[adult12$pid %in% famconf_all$pid_10,]   # 5862
 child12 <- read_dta("/Users/Ang/Desktop/data/cfps2012childcombined_032015compress.dta")
@@ -658,7 +669,7 @@ fam <- merge(fam, famconf_all_t, by=c("pid_10","wave"), all=T)
 famconf_all_t <- famconf_all[ , c("pid_10","urban_self_defined_10","fid10_16","phy_in_10","num_parents_children","p_age_10","p_educ_10","p_party_10","p_employed_10","p_bad_health_10","p_both_phy_in_10")]
 fam <- merge(fam, famconf_all_t, by=c("pid_10"), all=T)
 
-famconf_all_t <- famconf_all[ , c("pid_10","hk10","atschool2010","jobstatus_10","edu_10","income_10","marriage_10")]
+famconf_all_t <- famconf_all[ , c("pid_10","hk10","atschool2010","jobstatus_10","edu_10","income_10","marriage_10","educ_10")]
 fam <- merge(fam, famconf_all_t, by=c("pid_10"), all=T)
 
 
@@ -698,7 +709,7 @@ table(fam$owner, useNA = "always")  # 612=1
 famecon10 <- read_dta("/Users/Ang/Desktop/data/2010family_072016.dta")
 famecon10 <- famecon10[famecon10$fid %in% famconf_all$fid10_16,]    # 5326
 
-sum(is.na(famecon10$total_asset))  # 204
+sum(is.na(famecon10$total_asset))  # 221
 famecon10$lg_asset_10 <- log(famecon10$total_asset)
 
 sum(is.na(famecon10$lg_asset_10))  # 305 NA
@@ -708,8 +719,12 @@ famecon10$total_asset_10_n0 <- famecon10$total_asset
 famecon10$total_asset_10_n0[famecon10$total_asset_10_n0<=1] <- 1
 famecon10$lg_asset_10_n0 <- log(famecon10$total_asset_10_n0)
 
-
 famecon10$ihs_asset_10 <- log(sqrt((famecon10$total_asset)^2+1)+famecon10$total_asset)
+
+famecon10$percen_rank <- NA
+famecon10$percen_rank[!is.na(famecon10$total_asset)] <- rank(famecon10$total_asset[!is.na(famecon10$total_asset)])/length(famecon10$total_asset[!is.na(famecon10$total_asset)])
+summary(famecon10$percen_rank)
+sum(is.na(famecon10$percen_rank))
 
 famecon10$second_home_10 <- famecon10$fd7
 famecon10$second_home_10[famecon10$fd1!=1 & famecon10$fd1!=2 & famecon10$fd1!=6 & famecon10$fd1!=7 ] <- 0 # if not living in a house owned by self or family member
@@ -726,7 +741,7 @@ summary(famecon10$lg_per_net_income_10)
 
 
 famecon10 <- famecon10[,c("fid","total_asset_10","lg_asset_10","ihs_asset_10","lg_asset_10_n0","second_home_10","familysize","total_income_10",
-                          "total_net_income_10","per_total_income_10","per_net_income_10", "lg_per_net_income_10")]
+                          "total_net_income_10","per_total_income_10","per_net_income_10", "lg_per_net_income_10","percen_rank")]
 
 famconf_all <- merge(famconf_all, famecon10, by.x="fid10_16", by.y="fid", all=T)
 famconf_all$male <- famconf_all$tb2_a_p_16
@@ -737,7 +752,7 @@ famconf_all_t$familysize_10 <- famconf_all_t$familysize
 
 famconf_all_t <- famconf_all[ , c("pid_10","total_asset_10","lg_asset_10","ihs_asset_10","lg_asset_10_n0", "second_home_10","male","age_10",
                                   "age_10_sqr","age_10_cub","familysize_10","total_income_10","lg_per_net_income_10",
-                                  "total_net_income_10","per_total_income_10","per_net_income_10")]
+                                  "total_net_income_10","per_total_income_10","per_net_income_10","percen_rank")]
 
 fam <- merge(fam, famconf_all_t, by="pid_10", all = T)
 
@@ -747,8 +762,8 @@ fam$wave <- as.factor(fam$wave)
 
 
 fams <- fam[fam$select==1 | is.na(fam$select),]  # 1793 person-years for the outcome equation
-table(fams$owner, useNA = "always") # 614 owner person-years in the outcome sample
-nrow(fam[fam$select==0 & !is.na(fam$select),])       # 20482 person-years for the selection equation
+table(fams$owner, useNA = "always") # 612 owner person-years in the outcome sample
+nrow(fam[fam$select==0 & !is.na(fam$select),])       # 20449 person-years for the selection equation
 fams <- fams[order(fams$pid_10, fams$wave),]
 
 ## econ 12 
@@ -822,26 +837,86 @@ fam$fincome_mean[fam$select_dura==3 & fam$wave==3] <- (fam$fincome_12[fam$select
 fam$lg_fincome_mean <- log(fam$fincome_mean)
 hist(fam$lg_fincome_mean)
 summary(fam$lg_fincome_mean)
-sum(!is.na(fam$lg_fincome_mean))   # 1495
-
-#####
-adult10 <- read_dta("/Users/Ang/Desktop/data/2010famconf_072016.dta")
-adult10 <- adult10[adult10$pid %in% fam$pid_10,]
-
-adult10$not_living_at_home_10 <- as.factor(adult10$tb6_a_p)
-adult10$not_married_10 <- as.factor(adult10$tb3_a_p)
-adult10$edu_10 <- adult10$tb4_a_p
-
-table(adult10$tb4_a_p)
-table(adult10$not_married_10)
-table(adult10$not_living_at_home_10)
-#######
-
+sum(!is.na(fam$lg_fincome_mean))   # 1492
+  
+fam$inde <- as.factor(fam$inde)
+fam$urban <- as.factor(fam$urban)
+fam$owner <- as.factor(fam$owner)
+fam$select <- as.factor(fam$select)
+fam$phy_in <- as.factor(fam$phy_in)
+fam$urban_self_defined_10 <- as.factor(fam$urban_self_defined_10)
+fam$phy_in_10 <- as.factor(fam$phy_in_10)
+fam$p_educ_10 <- as.factor(fam$p_educ_10)
+fam$p_party_10 <- as.factor(fam$p_party_10)
+fam$p_bad_health_10 <- as.factor(fam$p_bad_health_10)
+fam$p_both_phy_in_10 <- as.factor(fam$p_both_phy_in_10)
 
 
-summary(glm(owner ~  male + lg_asset_10_n0 + wave, data = fam[fam$select==1,],family = "binomial"(link = "probit")))
+fam$non_agri_hukou_10 <- NA
+fam$non_agri_hukou_10[fam$hk10==1] <- 0
+fam$non_agri_hukou_10[fam$hk10==3] <- 1
+table(fam$non_agri_hukou_10)
+fam$non_agri_hukou_10 <- as.factor(fam$non_agri_hukou_10)
+
+fam$atschool2010 <- as.factor(fam$atschool2010)
+fam$edu_10 <- as.factor(fam$edu_10)
+fam$male <- as.factor(fam$male)
+
+table(fam$jobstatus_10)
+fam$employed_10 <- NA
+fam$employed_10[fam$jobstatus_10==1] <- 1
+fam$employed_10[fam$jobstatus_10>1] <- 0
+table(fam$employed_10, useNA = "always")
+
+fam$income_10[fam$income_10==-8] <- NA
+fam$lg_income_10 <- log(fam$income_10+1)
+sum(!is.na(fam$lg_income_10))
+
+table(fam$marriage_10)
+fam$never_married_10 <- NA
+fam$never_married_10[fam$marriage_10==1] <- 1
+fam$never_married_10[fam$marriage_10>1] <- 0
+table(fam$never_married_10, useNA = "always")
+
+fam$p_age_10_sqr <- (fam$p_age_10)^2
+
+fam$age_10_center <- fam$age_10-mean(fam$age_10, na.rm = T)
+fam$age_10_center_sqr <- (fam$age_10_center)^2
+fam$p_age_10_center <- fam$p_age_10-mean(fam$p_age_10, na.rm = T)
+fam$p_age_10_center_sqr <- (fam$p_age_10_center)^2
+
+fam <- fam[ , -c("hk10","jobstatus_10")]
+
+summary(glm(owner ~  male + percen_rank + wave, data = fam[fam$select==1,],family = "binomial"(link = "probit")))
+
+summary(heckit(select ~ male + age_10 + age_10_sqr + age_10_cub + ihs_asset_10 + num_parents_children + p_age_10 + p_educ_10 + p_party_10 + p_employed_10 + p_bad_health_10 + wave + atschool2010 + edu_10 + lg_income_10 + employed_10 + never_married_10 + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + age_10 + age_10_sqr + age_10_cub + ihs_asset_10 + num_parents_children + p_age_10 + p_educ_10 + p_party_10 + p_employed_10 + p_bad_health_10 + wave + atschool2010 + edu_10 + lg_income_10 + employed_10 + never_married_10,
+               data = fam))
+
+summary(heckit(select ~ male + age_10 + age_10_sqr + age_10_cub + ihs_asset_10 + num_parents_children + p_age_10 + p_educ_10 + p_party_10 + p_employed_10 + p_bad_health_10 + wave + edu_10 + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + ihs_asset_10 + num_parents_children + p_age_10 + p_educ_10 + p_party_10 + p_employed_10 + p_bad_health_10 + wave + edu_10,
+               data = fam))
+
+summary(heckit(select ~ male + ihs_asset_10 + num_parents_children + p_educ_10 + p_party_10 + p_employed_10 + p_bad_health_10 + wave + edu_10 + familysize_10 + phy_in_10 + p_both_phy_in_10 + age_10 + age_10_sqr + age_10_cub,
+               owner ~  male + ihs_asset_10 + num_parents_children + p_educ_10 + p_party_10 + p_employed_10 + p_bad_health_10 + wave + edu_10,
+               data = fam))
+
+summary(heckit(select ~ male + percen_rank + wave + p_educ_10 + p_age_10 + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + age_10 + age_10_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + percen_rank + wave + p_educ_10 + p_age_10 + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10,
+               data = fam))
+
+summary(heckit(select ~ male + percen_rank + wave + p_educ_10 + p_age_10 + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + age_10 + age_10_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + percen_rank + wave + p_educ_10 + p_age_10 + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10,
+               data = fam))
+
+summary(heckit(select ~ male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10,
+               data = fam))
 
 
+summary(heckit(select ~ male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10,
+               data = fam))
 
 
 sum(!is.na(fam$owner) & !is.na(fam$lg_asset_10_n0) & !is.na(fam$lg_fincome_mean) & !is.na(fam$wave) & !is.na(fam$male))
