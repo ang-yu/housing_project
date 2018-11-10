@@ -1,0 +1,871 @@
+
+rm(list=ls())
+
+setwd ("/Users/Ang/Desktop/SOE reform and intergenerational occupation mobility/thesis project")
+library("haven")
+library("GJRM")
+library("tidyr")
+library("sampleSelection")
+
+
+famconf10 <- read_dta("/Users/Ang/Desktop/data/2010famconf_072016.dta")   # 57155
+famconf12 <- read_dta("/Users/Ang/Desktop/data/cfps2012famros_092015compress.dta")   # 55012
+famconf14 <- read_dta("/Users/Ang/Desktop/data/cfps2014famconf_20161230.dta")   # 57739
+famconf16 <- read_dta("/Users/Ang/Desktop/data/cfps2016famconf_201804.dta")   # 58179
+
+famconf10 <- famconf10[famconf10$co_p==1, ]  # 57155
+famconf12 <- famconf12[famconf12$co_a12_p==1, ]  # 51491
+famconf14 <- famconf14[famconf14$co_a14_p==1, ]  # 52073
+famconf16 <- famconf16[famconf16$co_a16_p==1, ]  # 53617
+
+
+famconf10 <- famconf10[famconf10$birthy_best>=1976 & famconf10$birthy_best<=1998,]   # 18468
+
+famconf10 <- famconf10[famconf10$co_f==1 | famconf10$co_m==1, ]   # 13515   coresided with either one of parents in 2010
+
+
+colnames(famconf10) <- paste(colnames(famconf10), "_10", sep = "")
+colnames(famconf12) <- paste(colnames(famconf12), "_12", sep = "")
+colnames(famconf14) <- paste(colnames(famconf14), "_14", sep = "")
+colnames(famconf16) <- paste(colnames(famconf16), "_16", sep = "")
+
+famconf_all <- merge(famconf10, famconf12, by.x = "pid_10", by.y = "pid_12", all = F)
+famconf_all <- merge(famconf_all, famconf14, by.x = "pid_10", by.y = "pid_14", all = F)
+famconf_all <- merge(famconf_all, famconf16, by.x = "pid_10", by.y = "pid_16", all = F)  
+# 7707
+
+# table(famconf_all$birthy_best_10)
+# hist(famconf_all$birthy_best_10)
+
+famconf_all <- famconf_all[famconf_all$co_f_10!=-8 & famconf_all$co_m_10!=-8 & !is.na(famconf_all$co_f_10) & !is.na(famconf_all$co_m_10),]  
+famconf_all <- famconf_all[famconf_all$co_a12_f_12!=-8 & famconf_all$co_a12_m_12!=-8 & !is.na(famconf_all$co_a12_f_12) & !is.na(famconf_all$co_a12_m_12),] 
+famconf_all <- famconf_all[famconf_all$co_a14_f_14!=-8 & famconf_all$co_a14_m_14!=-8 & !is.na(famconf_all$co_a14_f_14) & !is.na(famconf_all$co_a14_m_14),] 
+famconf_all <- famconf_all[famconf_all$co_a16_f_16!=-8 & famconf_all$co_a16_m_16!=-8 & !is.na(famconf_all$co_a16_f_16) & !is.na(famconf_all$co_a16_m_16),]  
+# 7657
+
+
+famconf_all$inde_10 <- 0
+famconf_all$inde_10[(famconf_all$co_f_10==0 & famconf_all$co_m_10==0)] <- 1
+
+famconf_all$inde_12 <- 0
+famconf_all$inde_12[(famconf_all$co_a12_f_12==0 & famconf_all$co_a12_m_12==0)] <- 1
+
+famconf_all$inde_14 <- 0
+famconf_all$inde_14[(famconf_all$co_a14_f_14==0 & famconf_all$co_a14_m_14==0)] <- 1
+
+famconf_all$inde_16 <- 0
+famconf_all$inde_16[(famconf_all$co_a16_f_16==0 & famconf_all$co_a16_m_16==0)] <- 1
+
+table(famconf_all$inde_10, famconf_all$inde_12)
+table(famconf_all$inde_12, famconf_all$inde_14)   # For 42 respondents, at least one parent moved in between 12 and 14
+table(famconf_all$inde_14, famconf_all$inde_16)   # For 137 respondents, at least one parent moved in between 14 and 16
+
+sum(famconf_all$inde_12==0 & famconf_all$inde_14==1 & famconf_all$inde_16==0)
+sum(famconf_all$inde_12==1 & famconf_all$inde_14==0 & famconf_all$inde_16==0)
+sum(famconf_all$inde_12==1 & famconf_all$inde_14==0 & famconf_all$inde_16==1)
+sum(famconf_all$inde_12==1 & famconf_all$inde_14==1 & famconf_all$inde_16==0)
+
+# famconf_all <- famconf_all[(famconf_all$inde_12==1 & famconf_all$inde_14==0)==F & (famconf_all$inde_14==1 & famconf_all$inde_16==0)==F,] 
+# 7478
+# Delete 179 respondents who turn dependent out of independence. Define the process of being independent as one-directional.
+# for now I discard this operation.
+
+
+famconf_all <- famconf_all[famconf_all$pid_f_16==famconf_all$pid_f_10 & famconf_all$pid_f_16==famconf_all$pid_f_12 & famconf_all$pid_f_16==famconf_all$pid_f_14 & famconf_all$pid_m_16==famconf_all$pid_m_10 & famconf_all$pid_m_16==famconf_all$pid_m_12 & famconf_all$pid_m_16==famconf_all$pid_m_14,]
+# 7601
+# Delete 56 who have different parent across years...
+
+
+
+
+famconf10_p <- read_dta("/Users/Ang/Desktop/data/2010famconf_072016.dta") 
+
+famconf10_p <- famconf10_p[famconf10_p$pid %in% famconf_all$pid_f_10 | famconf10_p$pid %in% famconf_all$pid_m_10,]
+# 11298
+# include all parents who were in the same households as those respondents
+# note that famconf10_p$pid doesn't have missing value in any form
+
+# now I'll only retain those parents who have one child (determined by whether co_c1 to co_c10 have positive values). 
+# Otherwise, I'll have to determine how to deal with those respondents who leave parental home but still live with siblings.
+# Those repondents can pose challenges because any way of dealing with them is problematic: drop them from the sample; keep them and modify offspring-generation variables; coding them as non-independent.
+
+famconf10_p$child_num <- 0
+
+famconf10_p$child_num[famconf10_p$alive_a_c1>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c1>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c2>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c2>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c3>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c3>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c4>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c4>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c5>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c5>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c6>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c6>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c7>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c7>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c8>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c8>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c9>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c9>=0] + 1
+famconf10_p$child_num[famconf10_p$alive_a_c10>=0] <- famconf10_p$child_num[famconf10_p$alive_a_c10>=0] + 1
+
+table(famconf10_p$child_num, useNA = "always")
+
+famconf10_p <- famconf10_p[,c("pid","child_num")]
+
+famconf_all <- merge(famconf_all, famconf10_p, by.x="pid_f_10", by.y = "pid", all.x= T)
+famconf_all <- merge(famconf_all, famconf10_p, by.x="pid_m_10", by.y = "pid", all.x =T)
+
+table(famconf_all$child_num.x)  # number of children of fathers who live in the same household as the resp
+table(famconf_all$child_num.y)  # number of children of mothers who live in the same household as the resp
+sum(famconf_all$child_num.x!=famconf_all$child_num.y & !is.na(famconf_all$child_num.x) & !is.na(famconf_all$child_num.y))  # 13 incongruent
+famconf_all <- famconf_all[famconf_all$child_num.x==famconf_all$child_num.y | (is.na(famconf_all$child_num.x) | is.na(famconf_all$child_num.y)),]
+# from 7601 to 7588
+
+famconf_all$num_parents_children <- famconf_all$child_num.x
+
+# famconf_all <- famconf_all[(is.na(famconf_all$child_num.x) | famconf_all$child_num.x==1) & (famconf_all$child_num.y==1 | is.na(famconf_all$child_num.y)),]
+# from 7426 to 1659
+# This would make the number of independent respondents too few eventually. So I discarded this operation.
+
+share_father <- as.data.frame(tapply(famconf_all$pid_10, famconf_all$pid_f_16, length))
+colnames(share_father) <- "share_father_16"
+share_father$pid_f_16 <- rownames(share_father)
+
+famconf_all <- merge(famconf_all, share_father, by="pid_f_16")
+
+table(famconf_all$share_father_16)
+
+share_mother <- as.data.frame(tapply(famconf_all$pid_10, famconf_all$pid_m_16, length))
+colnames(share_mother) <- "share_mother_16"
+share_mother$pid_m_16 <- rownames(share_mother)
+
+famconf_all <- merge(famconf_all, share_mother, by="pid_m_16")
+
+table(famconf_all$share_mother_16)
+
+
+share_fid <- as.data.frame(tapply(famconf_all$pid_10, famconf_all$fid16_16, length))
+colnames(share_fid) <- "share_fid_16"
+share_fid$fid16_16 <- rownames(share_fid)
+
+famconf_all <- merge(famconf_all, share_fid, by="fid16_16")
+
+share_fid <- as.data.frame(tapply(famconf_all$pid_10, famconf_all$fid14_14, length))
+colnames(share_fid) <- "share_fid_14"
+share_fid$fid14_14 <- rownames(share_fid)
+
+famconf_all <- merge(famconf_all, share_fid, by="fid14_14")
+
+share_fid <- as.data.frame(tapply(famconf_all$pid_10, famconf_all$fid12_12, length))
+colnames(share_fid) <- "share_fid_12"
+share_fid$fid12_12 <- rownames(share_fid)
+
+famconf_all <- merge(famconf_all, share_fid, by="fid12_12")
+
+share_fid <- as.data.frame(tapply(famconf_all$pid_10, famconf_all$fid_10, length))
+colnames(share_fid) <- "share_fid_10"
+share_fid$fid_10 <- rownames(share_fid)
+
+famconf_all <- merge(famconf_all, share_fid, by="fid_10")
+
+table(famconf_all$share_fid_16)
+table(famconf_all$share_fid_14)
+table(famconf_all$share_fid_12)
+table(famconf_all$share_fid_10)
+
+# whether actually lived in home
+table(famconf_all$tb6_a_p_10)
+table(famconf_all$tb6_a12_p_12)
+table(famconf_all$tb6_a14_p_14)
+table(famconf_all$tb6_a16_p_16, useNA = "always")
+
+famconf_all$phy_in_10 <- famconf_all$tb6_a_p_10
+famconf_all$phy_in_12 <- famconf_all$tb6_a12_p_12
+famconf_all$phy_in_14 <- famconf_all$tb6_a14_p_14
+famconf_all$phy_in_16 <- famconf_all$tb6_a16_p_16
+
+# own marital status
+table(famconf_all$tb3_a_p, useNA = "always")
+famconf_all$married_10 <- 0
+famconf_all$married_10[famconf_all$tb3_a_p==2] <- 1
+famconf_all$married_10[famconf_all$tb3_a_p<=0] <- NA
+table(famconf_all$married_10, useNA = "always")
+
+table(famconf_all$tb3_a12_p_12, useNA = "always")
+famconf_all$married_12 <- 0
+famconf_all$married_12[famconf_all$tb3_a12_p_12==2] <- 1
+famconf_all$married_12[famconf_all$tb3_a12_p_12<=0] <- NA
+table(famconf_all$married_12, useNA = "always")
+
+table(famconf_all$tb3_a14_p_14, useNA = "always")
+famconf_all$married_14 <- 0
+famconf_all$married_14[famconf_all$tb3_a14_p_14==2] <- 1
+famconf_all$married_14[famconf_all$tb3_a14_p_14<=0] <- NA
+table(famconf_all$married_14, useNA = "always")
+
+table(famconf_all$tb3_a16_p_16, useNA = "always")
+famconf_all$married_16 <- 0
+famconf_all$married_16[famconf_all$tb3_a16_p_16_p==2] <- 1
+famconf_all$married_16[famconf_all$tb3_a16_p_16_p<=0] <- NA
+table(famconf_all$married_16, useNA = "always")
+# note that there are many NAs for marital status in 2016
+
+
+adult10 <- read_dta("/Users/Ang/Desktop/data/2010adult_072016.dta")
+adult10 <- adult10[adult10$pid %in% famconf_all$pid_10,]   # 3411
+
+child10 <- read_dta("/Users/Ang/Desktop/data/2010child_072016.dta")
+child10 <- child10[child10$pid %in% famconf_all$pid_10,]   # 1485
+
+7588-(3411+1485)
+# so I can get even less valid information from adult and child questionairs combined than from the famconf questionaire.
+
+#tb4_a16_p  own educational attainment
+table(famconf_all$tb4_a_p, useNA = "always")
+famconf_all$edu_10[famconf_all$tb4_a_p<=0] <- NA
+famconf_all$edu_10[famconf_all$tb4_a_p==1 | famconf_all$tb4_a_p==2] <- 1 # primary school or below
+famconf_all$edu_10[famconf_all$tb4_a_p==3] <- 2  # junior high
+famconf_all$edu_10[famconf_all$tb4_a_p==4] <- 3  # senior high
+famconf_all$edu_10[famconf_all$tb4_a_p>=5] <- 4  # college or above
+table(famconf_all$edu_10, useNA = "always")
+
+table(famconf_all$tb4_a12_p, useNA = "always")
+famconf_all$edu_12[famconf_all$tb4_a12_p<=0] <- NA
+famconf_all$edu_12[famconf_all$tb4_a12_p==1 | famconf_all$tb4_a12_p==2] <- 1 # primary school or below
+famconf_all$edu_12[famconf_all$tb4_a12_p==3] <- 2  # junior high
+famconf_all$edu_12[famconf_all$tb4_a12_p==4] <- 3  # senior high
+famconf_all$edu_12[famconf_all$tb4_a12_p>=5] <- 4  # college or above
+table(famconf_all$edu_12, useNA = "always")
+
+table(famconf_all$tb4_a14_p, useNA = "always")
+famconf_all$edu_14[famconf_all$tb4_a14_p<=0] <- NA
+famconf_all$edu_14[famconf_all$tb4_a14_p==1 | famconf_all$tb4_a14_p==2] <- 1 # primary school or below
+famconf_all$edu_14[famconf_all$tb4_a14_p==3] <- 2  # junior high
+famconf_all$edu_14[famconf_all$tb4_a14_p==4] <- 3  # senior high
+famconf_all$edu_14[famconf_all$tb4_a14_p>=5] <- 4  # college or above
+table(famconf_all$edu_14, useNA = "always")
+
+table(famconf_all$tb4_a16_p, useNA = "always")
+famconf_all$edu_16[famconf_all$tb4_a16_p<=0] <- NA
+famconf_all$edu_16[famconf_all$tb4_a16_p==1 | famconf_all$tb4_a16_p==2] <- 1 # primary school or below
+famconf_all$edu_16[famconf_all$tb4_a16_p==3] <- 2  # junior high
+famconf_all$edu_16[famconf_all$tb4_a16_p==4] <- 3  # senior high
+famconf_all$edu_16[famconf_all$tb4_a16_p>=5] <- 4  # college or above
+table(famconf_all$edu_16, useNA = "always")
+
+adult12 <- read_dta("/Users/Ang/Desktop/data/cfps2012adultcombined_092015compress.dta")
+adult12 <- adult12[adult12$pid %in% famconf_all$pid_10,]   # 5862
+child12 <- read_dta("/Users/Ang/Desktop/data/cfps2012childcombined_032015compress.dta")
+child12 <- child12[child12$pid %in% famconf_all$pid_10,]   # 751
+7588-(5862+751)
+
+table(adult12$wc01, useNA = "always")
+table(child12$wc01, useNA = "always")
+table(child12$wf3m, useNA = "always")
+adult12$at_school_12 <- adult12$wc01
+child12$at_school_12 <- child12$wf3m
+child12$at_school_12[child12$at_school_12<0] <- NA
+table(child12$at_school_12, useNA = "always")
+table(adult12$at_school_12, useNA = "always")
+
+adult12 <- adult12[, c("pid", "at_school_12")]
+child12 <- child12[, c("pid", "at_school_12")]
+
+famconf_all <- merge(famconf_all, adult12, by.x = "pid_10", by.y = "pid", all = T)
+famconf_all <- merge(famconf_all, child12, by.x = "pid_10", by.y = "pid", all = T)
+
+famconf_all$at_school_12 <- NA
+famconf_all$at_school_12[!is.na(famconf_all$at_school_12.x)] <- famconf_all$at_school_12.x[!is.na(famconf_all$at_school_12.x)]
+famconf_all$at_school_12[!is.na(famconf_all$at_school_12.y)] <- famconf_all$at_school_12.y[!is.na(famconf_all$at_school_12.y)]
+table(famconf_all$at_school_12, useNA = "always")
+
+
+crossyear <- read_dta("/Users/Ang/Desktop/data/Cfps2016crossyearid_201807.dta")
+crossyear <- crossyear[crossyear$pid %in% famconf_all$pid_10,]   # 7588
+
+table(crossyear$hk10, useNA = "always")
+table(crossyear$atschool2010, useNA = "always")
+table(crossyear$cfps2010sch_best, useNA = "always")
+table(crossyear$jobstatus_10, useNA = "always")
+summary(crossyear$income_10)
+sum(crossyear$income_10==-8)
+table(crossyear$marriage_10, useNA = "always")
+sum(crossyear$hk10!=-8 & !is.na(crossyear$atschool2010) & !is.na(crossyear$cfps2010sch_best) & !is.na(crossyear$jobstatus_10)  & !is.na(crossyear$marriage_10))
+
+famconf_all <- merge(famconf_all, crossyear, by.x = "pid_10", by.y = "pid", all = T)
+
+#adult10 <- read_dta("/Users/Ang/Desktop/data/2010adult_072016.dta")
+#adult10 <- adult10[adult10$pid %in% famconf_all$pid_10,]   # 3411
+#child10 <- read_dta("/Users/Ang/Desktop/data/2010child_072016.dta")
+#child10 <- child10[child10$pid %in% famconf_all$pid_10,]   # 751
+#7588-(3411+751)
+# It seems using the crossyear dataset is my best choice. But note that for education variable I should those from the famconf questionaire. 
+
+
+#tb6_a16_f  both parents phisically live in the household residence
+famconf_all$p_both_phy_in_10 <- 0
+famconf_all$p_both_phy_in_10[famconf_all$tb6_a_f==1 & famconf_all$tb6_a_m==1] <- 1
+table(famconf_all$p_both_phy_in_10)
+
+famconf_all$p_both_phy_in_12 <- 0
+famconf_all$p_both_phy_in_12[famconf_all$tb6_a12_f==1 & famconf_all$tb6_a12_m==1] <- 1
+table(famconf_all$p_both_phy_in_12)
+
+famconf_all$p_both_phy_in_14 <- 0
+famconf_all$p_both_phy_in_14[famconf_all$tb6_a14_f==1 & famconf_all$tb6_a14_m==1] <- 1
+table(famconf_all$p_both_phy_in_14)
+
+famconf_all$p_both_phy_in_16 <- 0
+famconf_all$p_both_phy_in_16[famconf_all$tb6_a16_f==1 & famconf_all$tb6_a16_m==1] <- 1
+table(famconf_all$p_both_phy_in_16)
+
+#famconf10 <- read_dta("/Users/Ang/Desktop/data/2010famconf_072016.dta")
+#famconf_10_f <- famconf10[famconf10$pid %in% famconf_all$pid_f_10,]
+#table(2010-famconf_10_f$birthy_best)
+
+table(2010-famconf_all$fbirthy)
+
+famconf_all$fage10 <- 2010-famconf_all$fbirthy
+famconf_all$fage_gap <- famconf_all$fage10-(2010-famconf_all$birthy_best_10)
+table(famconf_all$fage_gap)
+famconf_all$fage10[famconf_all$fage_gap<=16] <- NA    # there are 9 people who is not at least 16 years younger than their fathers
+table(famconf_all$fage10, useNA = "always")
+
+famconf_all$mage10 <- 2010-famconf_all$mbirthy
+famconf_all$mage_gap <- famconf_all$mage10-(2010-famconf_all$birthy_best_10)
+table(famconf_all$mage_gap)
+famconf_all$mage10[famconf_all$mage_gap<=16] <- NA   # there are 20 people who is not at least 16 years younger than their fathers
+table(famconf_all$mage10, useNA = "always")
+
+sum(is.na(famconf_all$fage10))
+sum(is.na(famconf_all$fage10) & is.na(famconf_all$mage10))
+
+mean(famconf_all$fage10, na.rm = T)
+mean(famconf_all$mage10, na.rm = T)
+
+famconf_all$p_age_10 <- famconf_all$fage10
+famconf_all$p_age_10[is.na(famconf_all$f_age_10)] <- famconf_all$mage10[is.na(famconf_all$f_age_10)] + 2
+table(famconf_all$p_age_10)
+
+
+table(famconf_all$feduc_10)
+famconf_all$f_educ_10 <- NA
+famconf_all$f_educ_10[famconf_all$feduc_10==1 | famconf_all$feduc_10==2] <- 1  # primary school or less
+famconf_all$f_educ_10[famconf_all$feduc_10==3] <- 2  # junior high
+famconf_all$f_educ_10[famconf_all$feduc_10==4] <- 3  # senior high
+famconf_all$f_educ_10[famconf_all$feduc_10>=5] <- 4  # college or more
+table(famconf_all$f_educ_10, useNA = "always")
+
+table(famconf_all$meduc_10)
+famconf_all$m_educ_10 <- NA
+famconf_all$m_educ_10[famconf_all$meduc_10==1 | famconf_all$meduc_10==2] <- 1  # primary school or less
+famconf_all$m_educ_10[famconf_all$meduc_10==3] <- 2  # junior high
+famconf_all$m_educ_10[famconf_all$meduc_10==4] <- 3  # senior high
+famconf_all$m_educ_10[famconf_all$meduc_10>=5] <- 4  # college or more
+table(famconf_all$m_educ_10, useNA = "always")
+
+famconf_all$p_educ_10 <- famconf_all$f_educ_10
+famconf_all$p_educ_10[is.na(famconf_all$p_educ_10)] <- famconf_all$m_educ_10[is.na(famconf_all$p_educ_10)]
+table(famconf_all$p_educ_10, useNA = "always")
+
+table(famconf_all$fparty_10, useNA = "always")
+table(famconf_all$mparty_10, useNA = "always")
+
+famconf_all$p_party_10 <- NA
+famconf_all$p_party_10[famconf_all$fparty_10==1] <- 1
+famconf_all$p_party_10[famconf_all$mparty_10==1] <- 1
+famconf_all$p_party_10[(famconf_all$mparty_10==2 | famconf_all$mparty_10==3 | famconf_all$mparty_10==4) & (famconf_all$fparty_10==2 | famconf_all$fparty_10==3 | famconf_all$fparty_10==4)] <- 0
+table(famconf_all$p_party_10, useNA = "always")
+
+
+
+
+# adult questionaire for parents in 2010
+adult10_f <- read_dta("/Users/Ang/Desktop/data/2010adult_072016.dta")
+adult10_f <- adult10_f[adult10_f$pid %in% famconf_all$pid_f_10,]   # 4445
+
+adult10_m <- read_dta("/Users/Ang/Desktop/data/2010adult_072016.dta")
+adult10_m <- adult10_m[adult10_m$pid %in% famconf_all$pid_m_10,]   # 4966
+
+adult10_f$f_bad_health_10 <- NA
+adult10_f$f_bad_health_10[adult10_f$qp3==3 | adult10_f$qp3==4 |adult10_f$qp3==5] <- 1  # bad health=1, if seld-assesed "relatively unhealthy", "unhealthy", or "very unhealthy".
+adult10_f$f_bad_health_10[adult10_f$qp3==1 | adult10_f$qp3==2] <- 0
+table(adult10_f$f_bad_health_10, useNA = "always")
+
+adult10_f$f_employed_10 <- adult10_f$qg3
+
+adult10_m$m_bad_health_10 <- NA
+adult10_m$m_bad_health_10[adult10_m$qp3==3 | adult10_m$qp3==4 |adult10_m$qp3==5] <- 1  # bad health=1, if seld-assesed "relatively unhealthy", "unhealthy", or "very unhealthy".
+adult10_m$m_bad_health_10[adult10_m$qp3==1 | adult10_m$qp3==2] <- 0
+table(adult10_m$m_bad_health_10, useNA = "always")
+
+adult10_m$m_employed_10 <- adult10_m$qg3
+
+adult10_f <- adult10_f[,c("pid","f_bad_health_10", "f_employed_10")]
+adult10_m <- adult10_m[,c("pid","m_bad_health_10", "m_employed_10")]
+
+famconf_all <- merge(famconf_all, adult10_f, by.x = "pid_f_10", by.y = "pid", all = T)
+famconf_all <- merge(famconf_all, adult10_m, by.x = "pid_m_10", by.y = "pid", all = T)
+
+famconf_all$p_bad_health_10 <- 0   
+famconf_all$p_bad_health_10[famconf_all$m_bad_health_10==1 | famconf_all$f_bad_health_10==1] <- 1
+sum(is.na(famconf_all$m_bad_health_10) & is.na(famconf_all$f_bad_health_10))  # 413
+famconf_all$p_bad_health_10[is.na(famconf_all$m_bad_health_10) & is.na(famconf_all$f_bad_health_10)] <- NA
+table(famconf_all$p_bad_health_10, useNA = "always")
+
+famconf_all$p_employed_10 <- 0
+famconf_all$p_employed_10[famconf_all$f_employed_10==1| famconf_all$m_employed_10==1] <- 1
+sum(is.na(famconf_all$f_employed_10) & is.na(famconf_all$m_employed_10))  # 413
+famconf_all$p_employed_10[is.na(famconf_all$f_employed_10) & is.na(famconf_all$m_employed_10)] <- NA
+table(famconf_all$p_employed_10, useNA = "always")
+
+
+
+# adult questionaire for parents in 2012
+
+# adult questionaire for parents in 2014
+
+# adult questionaire for parents in 2016
+
+
+# famconf_all <- famconf_all[famconf_all$tb6_a_p_10==1,]  # from 7588 to 5696 only keep those who physically lived with parents in 2010
+# famconf_all <- famconf_all[famconf_all$share_fid_16==1 & famconf_all$share_fid_14==1 & famconf_all$share_fid_12==1 &famconf_all$share_fid_10==1,]
+
+famecon16 <- read_dta("/Users/Ang/Desktop/data/cfps2016famecon_201807.dta")
+famecon16 <- famecon16[famecon16$fid16 %in% famconf_all$fid16_16,]  # 6170
+
+famecon14 <- read_dta("/Users/Ang/Desktop/data/Ecfps2014famecon_170630.dta")
+famecon14 <- famecon14[famecon14$fid14 %in% famconf_all$fid14_14,]  # 6103
+
+famecon12 <- read_dta("/Users/Ang/Desktop/data/cfps2012family_092015compress.dta")
+famecon12 <- famecon12[famecon12$fid12 %in% famconf_all$fid12_12,]  # 5916
+
+famecon10 <- read_dta("/Users/Ang/Desktop/data/2010family_072016.dta")
+famecon10 <- famecon10[famecon10$fid %in% famconf_all$fid_10,]  # 5786
+
+
+table(famconf_all$inde_16)
+table(famconf_all$inde_14)
+table(famconf_all$inde_12)
+table(famconf_all$inde_10)
+
+
+famecon10$owner10 <- 0
+famecon10$owner10[famecon10$fd1==1 | famecon10$fd1==2 | famecon10$fd1==6 | famecon10$fd1==7 | famecon10$fd7==1] <- 1 
+famecon10$cid10 <- famecon10$cid
+famecon10$stat_urban_10 <- famecon10$urban
+
+famecon10 <- famecon10[,c("fid","owner10","stat_urban_10","cid10")] 
+
+
+famecon12$owner12 <- 0
+famecon12$owner12[famecon12$fq1==1 | famecon12$fq1==2 |famecon12$fq1==7 | famecon12$fr1==1] <- 1 
+famecon12$cid12 <- famecon12$cid
+famecon12$econ_urban_12 <- famecon12$urbancomm
+famecon12$stat_urban_12 <- famecon12$urban12
+famecon12 <- famecon12[,c("fid12","owner12","econ_urban_12","stat_urban_12","cid12")]
+
+famecon14$owner14 <- 0
+famecon14$owner14[famecon14$fq2==1 | famecon14$fq2==2 |famecon14$fq4==7 | famecon14$fr1==1] <- 1 
+famecon14$owner14[famecon14$fq2<0] <- 2
+famecon14$econ_urban_14 <- famecon14$fa1
+famecon14$stat_urban_14 <- famecon14$urban14
+famecon14 <- famecon14[,c("fid14","owner14","econ_urban_14","stat_urban_14","cid14")]
+
+famecon16$owner16 <- 0
+famecon16$owner16[famecon16$fq2==1 | famecon16$fq2==2 |famecon16$fq4==7 | famecon16$fr1==1] <- 1 
+famecon16$owner16[famecon16$fq2<0] <- 2
+famecon16$econ_urban_16 <- famecon16$fa101
+famecon16$stat_urban_16 <- famecon16$urban16
+famecon16 <- famecon16[,c("fid16","owner16","econ_urban_16","stat_urban_16","cid16")]
+
+famconf_all <- merge(famconf_all, famecon10, by.x = "fid_10", by.y = "fid", all.x=T)
+famconf_all <- merge(famconf_all, famecon12, by.x = "fid12_12", by.y = "fid12", all.x=T)
+famconf_all <- merge(famconf_all, famecon14, by.x = "fid14_14", by.y = "fid14", all.x=T)
+famconf_all <- merge(famconf_all, famecon16, by.x = "fid16_16", by.y = "fid16", all.x=T)  
+
+table(famconf_all$econ_urban_12)
+table(famconf_all$econ_urban_14)
+table(famconf_all$econ_urban_16)
+
+famconf_all$econ_urban_14[famconf_all$econ_urban_14==-1] <- NA
+famconf_all$econ_urban_16[famconf_all$econ_urban_16==-1] <- NA
+famconf_all$econ_urban_14[famconf_all$econ_urban_14==5] <- 0
+famconf_all$econ_urban_16[famconf_all$econ_urban_16==5] <- 0  
+# now 0 is village, 1 is Residential Community
+
+# If statistic bureau classification is missing, then substitute the other urban-rural classification variable from econ ques
+famconf_all$urban_self_defined_10 <- famconf_all$stat_urban_10
+
+famconf_all$urban_self_defined_12 <- famconf_all$stat_urban_12
+famconf_all$urban_self_defined_12[famconf_all$urban_self_defined_12==-9 & !is.na(famconf_all$urban_self_defined_12)] <- famconf_all$econ_urban_12[famconf_all$urban_self_defined_12==-9 & !is.na(famconf_all$urban_self_defined_12)]
+
+famconf_all$urban_self_defined_14 <- famconf_all$stat_urban_14
+famconf_all$urban_self_defined_14[famconf_all$urban_self_defined_14==-9 & !is.na(famconf_all$urban_self_defined_14)] <- famconf_all$econ_urban_14[famconf_all$urban_self_defined_14==-9 & !is.na(famconf_all$urban_self_defined_14)]
+
+famconf_all$urban_self_defined_16 <- famconf_all$stat_urban_16
+famconf_all$urban_self_defined_16[famconf_all$urban_self_defined_16==-9 & !is.na(famconf_all$urban_self_defined_16)] <- famconf_all$econ_urban_16[famconf_all$urban_self_defined_16==-9 & !is.na(famconf_all$urban_self_defined_16)]
+
+
+# summarize the dynamics of inde
+
+sum(famconf_all$inde_10==0 & famconf_all$inde_12==1)
+sum(famconf_all$inde_12==0 & famconf_all$inde_14==1)
+sum(famconf_all$inde_14==0 & famconf_all$inde_16==1)
+
+sum(famconf_all$inde_12==1 & famconf_all$inde_14==0)
+sum(famconf_all$inde_14==1 & famconf_all$inde_16==0)
+
+# summarize the dynamics of urban
+
+table(famconf_all$urban_self_defined_10, useNA = "always")
+table(famconf_all$urban_self_defined_12, useNA = "always")
+table(famconf_all$urban_self_defined_14, useNA = "always")
+table(famconf_all$urban_self_defined_16, useNA = "always")
+
+table(famconf_all$urban_self_defined_16, famconf_all$inde_16, useNA = "always")
+
+
+sum(famconf_all$urban_self_defined_10==0 & famconf_all$urban_self_defined_12==1 & !is.na(famconf_all$urban_self_defined_10) & !is.na(famconf_all$urban_self_defined_12))
+sum(famconf_all$urban_self_defined_12==0 & famconf_all$urban_self_defined_14==1 & !is.na(famconf_all$urban_self_defined_12) & !is.na(famconf_all$urban_self_defined_14))
+sum(famconf_all$urban_self_defined_14==0 & famconf_all$urban_self_defined_16==1 & !is.na(famconf_all$urban_self_defined_14) & !is.na(famconf_all$urban_self_defined_16))
+
+
+sum(famconf_all$urban_self_defined_10==1 & famconf_all$urban_self_defined_12==0 & !is.na(famconf_all$urban_self_defined_10) & !is.na(famconf_all$urban_self_defined_12))
+sum(famconf_all$urban_self_defined_12==1 & famconf_all$urban_self_defined_14==0 & !is.na(famconf_all$urban_self_defined_12) & !is.na(famconf_all$urban_self_defined_14))
+sum(famconf_all$urban_self_defined_14==1 & famconf_all$urban_self_defined_16==0 & !is.na(famconf_all$urban_self_defined_14) & !is.na(famconf_all$urban_self_defined_16))
+
+
+# combine the information above 
+
+famconf_all$selected_10 <- NA
+famconf_all$selected_10[famconf_all$urban_self_defined_10==0 | famconf_all$inde_10==0] <- 0
+famconf_all$selected_10[famconf_all$urban_self_defined_10==1 & famconf_all$inde_10==1] <- 1
+
+famconf_all$selected_12 <- NA
+famconf_all$selected_12[famconf_all$urban_self_defined_12==0 | famconf_all$inde_12==0] <- 0
+famconf_all$selected_12[famconf_all$urban_self_defined_12==1 & famconf_all$inde_12==1] <- 1
+
+famconf_all$selected_14 <- NA
+famconf_all$selected_14[famconf_all$urban_self_defined_14==0 | famconf_all$inde_14==0] <- 0
+famconf_all$selected_14[famconf_all$urban_self_defined_14==1 & famconf_all$inde_14==1] <- 1
+
+famconf_all$selected_16 <- NA
+famconf_all$selected_16[famconf_all$urban_self_defined_16==0 | famconf_all$inde_16==0] <- 0
+famconf_all$selected_16[famconf_all$urban_self_defined_16==1 & famconf_all$inde_16==1] <- 1
+
+
+sum(is.na(famconf_all$selected_10) | is.na(famconf_all$selected_12) |is.na(famconf_all$selected_14) |is.na(famconf_all$selected_16))
+# I can't be sure about the selection status of 95 individuals
+
+famconf_all <- famconf_all[!is.na(famconf_all$selected_10) & !is.na(famconf_all$selected_12) & !is.na(famconf_all$selected_14) & !is.na(famconf_all$selected_16),]
+# 5601
+
+# A previously tried alternative
+#famconf_all$selected_10[is.na(famconf_all$selected_10)] <- 0
+#famconf_all$selected_12[is.na(famconf_all$selected_12)] <- 0
+#famconf_all$selected_14[is.na(famconf_all$selected_14)] <- 0
+#famconf_all$selected_16[is.na(famconf_all$selected_16)] <- 0
+
+
+sum(famconf_all$selected_10==0 & famconf_all$selected_12==1 & !is.na(famconf_all$selected_10) & !is.na(famconf_all$selected_12))
+sum(famconf_all$selected_12==0 & famconf_all$selected_14==1 & !is.na(famconf_all$selected_12) & !is.na(famconf_all$selected_14))
+sum(famconf_all$selected_14==0 & famconf_all$selected_16==1 & !is.na(famconf_all$selected_14) & !is.na(famconf_all$selected_16))
+
+sum(famconf_all$selected_12==1 & famconf_all$selected_14==0 & !is.na(famconf_all$selected_12) & !is.na(famconf_all$selected_14))
+sum(famconf_all$selected_14==1 & famconf_all$selected_16==0 & !is.na(famconf_all$selected_14) & !is.na(famconf_all$selected_16))
+
+sum(((famconf_all$selected_12==1 & famconf_all$selected_14==0) | (famconf_all$selected_14==1 & famconf_all$selected_16==0)) & !is.na(famconf_all$selected_12) & !is.na(famconf_all$selected_14) & !is.na(famconf_all$selected_16))
+
+
+table(famconf_all$selected_10, useNA = "always")
+table(famconf_all$selected_12, useNA = "always")
+table(famconf_all$selected_14, useNA = "always")
+table(famconf_all$selected_16, useNA = "always")
+
+famconf_all$owner12[famconf_all$selected_12==0] <- 0
+famconf_all$owner14[famconf_all$selected_14==0] <- 0
+famconf_all$owner16[famconf_all$selected_16==0] <- 0
+
+table(famconf_all$owner12, useNA = "always")
+table(famconf_all$owner14, useNA = "always")
+table(famconf_all$owner16, useNA = "always")
+
+sum(famconf_all$owner12==1)
+sum(famconf_all$owner12==0 & famconf_all$owner14==1)
+sum(famconf_all$owner14==0 & famconf_all$owner16==1)
+sum(famconf_all$owner12==1 & famconf_all$owner14==0)
+sum(famconf_all$owner14==1 & famconf_all$owner16==0)
+
+
+famconf_all$owner14[famconf_all$owner12==1] <- 1 # for convienience
+famconf_all$owner16[famconf_all$owner14==1] <- 1 # for convienience
+famconf_all$selected_14[famconf_all$selected_12==1] <- 1 # for convienience
+famconf_all$selected_16[famconf_all$selected_14==1] <- 1 # for convienience
+
+##########
+famconf_all_t <- famconf_all[,c("pid_10","inde_10","inde_12","inde_14","inde_16")]
+fam <- gather(famconf_all_t, key = "wave", value = "inde", "inde_10","inde_12","inde_14","inde_16")
+fam$wave[fam$wave=="inde_10"] <- 1
+fam$wave[fam$wave=="inde_12"] <- 2
+fam$wave[fam$wave=="inde_14"] <- 3
+fam$wave[fam$wave=="inde_16"] <- 4
+
+famconf_all_t <- famconf_all[,c("pid_10","urban_self_defined_10","urban_self_defined_12","urban_self_defined_14","urban_self_defined_16")]
+fam_t <- gather(famconf_all_t, key = "wave", value = "urban", "urban_self_defined_10","urban_self_defined_12","urban_self_defined_14","urban_self_defined_16")
+fam_t$wave[fam_t$wave=="urban_self_defined_10"] <- 1
+fam_t$wave[fam_t$wave=="urban_self_defined_12"] <- 2
+fam_t$wave[fam_t$wave=="urban_self_defined_14"] <- 3
+fam_t$wave[fam_t$wave=="urban_self_defined_16"] <- 4
+
+fam <- merge(fam, fam_t, by=c("pid_10","wave"), all=T)
+
+
+famconf_all_t <- famconf_all[,c("pid_10","owner10","owner12","owner14","owner16")] 
+fam_t <- gather(famconf_all_t, key = "wave", value = "owner", "owner10","owner12","owner14","owner16")
+fam_t$wave[fam_t$wave=="owner10"] <- 1
+fam_t$wave[fam_t$wave=="owner12"] <- 2
+fam_t$wave[fam_t$wave=="owner14"] <- 3
+fam_t$wave[fam_t$wave=="owner16"] <- 4
+
+fam <- merge(fam, fam_t, by=c("pid_10","wave"), all=T)
+fam$owner[fam$owner==2] <- 0
+
+
+famconf_all_t <- famconf_all[,c("pid_10","selected_10","selected_12","selected_14","selected_16")]
+fam_t <- gather(famconf_all_t, key = "wave", value = "select", "selected_10","selected_12","selected_14","selected_16")
+fam_t$wave[fam_t$wave=="selected_10"] <- 1
+fam_t$wave[fam_t$wave=="selected_12"] <- 2
+fam_t$wave[fam_t$wave=="selected_14"] <- 3
+fam_t$wave[fam_t$wave=="selected_16"] <- 4
+
+fam <- merge(fam, fam_t, by=c("pid_10","wave"), all=T)
+
+famconf_all_t <- famconf_all[ , c("pid_10","fid10_16","fid12_16","fid14_16","fid16_16")]
+famconf_all_t <- gather(famconf_all_t, key = "wave", value = "fid", "fid10_16","fid12_16","fid14_16","fid16_16")
+famconf_all_t$wave[famconf_all_t$wave=="fid10_16"] <- 1
+famconf_all_t$wave[famconf_all_t$wave=="fid12_16"] <- 2
+famconf_all_t$wave[famconf_all_t$wave=="fid14_16"] <- 3
+famconf_all_t$wave[famconf_all_t$wave=="fid16_16"] <- 4
+
+fam <- merge(fam, famconf_all_t, by=c("pid_10","wave"), all=T)
+
+famconf_all_t <- famconf_all[ , c("pid_10","phy_in_10","phy_in_12","phy_in_14","phy_in_16")]
+famconf_all_t <- gather(famconf_all_t, key = "wave", value = "phy_in", "phy_in_10","phy_in_12","phy_in_14","phy_in_16")
+famconf_all_t$wave[famconf_all_t$wave=="phy_in_10"] <- 1
+famconf_all_t$wave[famconf_all_t$wave=="phy_in_12"] <- 2
+famconf_all_t$wave[famconf_all_t$wave=="phy_in_14"] <- 3
+famconf_all_t$wave[famconf_all_t$wave=="phy_in_16"] <- 4
+
+fam <- merge(fam, famconf_all_t, by=c("pid_10","wave"), all=T)
+
+# time-invariant variables
+
+famconf_all_t <- famconf_all[ , c("pid_10","urban_self_defined_10","fid10_16","phy_in_10","num_parents_children","p_age_10","p_educ_10","p_party_10","p_employed_10","p_bad_health_10","p_both_phy_in_10")]
+fam <- merge(fam, famconf_all_t, by=c("pid_10"), all=T)
+
+famconf_all_t <- famconf_all[ , c("pid_10","hk10","atschool2010","jobstatus_10","edu_10","income_10","marriage_10")]
+fam <- merge(fam, famconf_all_t, by=c("pid_10"), all=T)
+
+
+fam <- fam[fam$wave>1,]
+fam$wave[fam$wave==2] <- 1
+fam$wave[fam$wave==3] <- 2
+fam$wave[fam$wave==4] <- 3
+
+select_dura <- tapply(fam$select, fam$pid_10, sum)
+select_dura <- as.data.frame(select_dura)
+select_dura$pid_10 <- rownames(select_dura)
+table(select_dura$select_dura, useNA = "always")
+
+fam <- merge(fam, select_dura, by = "pid_10")
+
+table(fam$select)
+#fam$select[fam$select_dura==2 & fam$wave==3] <- NA
+#fam$select[fam$select_dura==3 & (fam$wave==2 | fam$wave==3)] <- NA
+#table(fam$select)
+
+
+owner_dura <- tapply(fam$owner, fam$pid_10, sum)
+owner_dura <- as.data.frame(owner_dura)
+owner_dura$pid_10 <- rownames(owner_dura)
+table(owner_dura$owner_dura, useNA = "always")
+
+fam <- merge(fam, owner_dura, by = "pid_10")
+
+table(fam$owner, useNA = "always")  # 1059=1
+fam$owner[fam$owner_dura==2 & fam$wave==3] <- NA
+fam$owner[fam$owner_dura==3 & (fam$wave==2 | fam$wave==3)] <- NA
+table(fam$owner, useNA = "always")  # 612=1
+
+
+# econ 10
+
+famecon10 <- read_dta("/Users/Ang/Desktop/data/2010family_072016.dta")
+famecon10 <- famecon10[famecon10$fid %in% famconf_all$fid10_16,]    # 5326
+
+sum(is.na(famecon10$total_asset))  # 204
+famecon10$lg_asset_10 <- log(famecon10$total_asset)
+
+sum(is.na(famecon10$lg_asset_10))  # 305 NA
+famecon10$lg_asset_10[famecon10$lg_asset_10<=0] <- NA  # now 329 NA
+
+famecon10$total_asset_10_n0 <- famecon10$total_asset
+famecon10$total_asset_10_n0[famecon10$total_asset_10_n0<=1] <- 1
+famecon10$lg_asset_10_n0 <- log(famecon10$total_asset_10_n0)
+
+
+famecon10$ihs_asset_10 <- log(sqrt((famecon10$total_asset)^2+1)+famecon10$total_asset)
+
+famecon10$second_home_10 <- famecon10$fd7
+famecon10$second_home_10[famecon10$fd1!=1 & famecon10$fd1!=2 & famecon10$fd1!=6 & famecon10$fd1!=7 ] <- 0 # if not living in a house owned by self or family member
+
+famecon10$total_asset_10 <- famecon10$total_asset
+
+famecon10$total_income_10 <- famecon10$faminc
+famecon10$total_net_income_10 <- famecon10$faminc_net
+famecon10$per_total_income_10 <- famecon10$indinc
+famecon10$per_net_income_10 <- famecon10$indinc_net
+
+famecon10$lg_per_net_income_10 <- log(famecon10$per_net_income_10)
+summary(famecon10$lg_per_net_income_10)
+
+
+famecon10 <- famecon10[,c("fid","total_asset_10","lg_asset_10","ihs_asset_10","lg_asset_10_n0","second_home_10","familysize","total_income_10",
+                          "total_net_income_10","per_total_income_10","per_net_income_10", "lg_per_net_income_10")]
+
+famconf_all <- merge(famconf_all, famecon10, by.x="fid10_16", by.y="fid", all=T)
+famconf_all$male <- famconf_all$tb2_a_p_16
+famconf_all$age_10 <- 2010-famconf_all$birthy_best_10
+famconf_all$age_10_sqr <- (famconf_all$age_10)^2
+famconf_all$age_10_cub <- (famconf_all$age_10)^3
+famconf_all_t$familysize_10 <- famconf_all_t$familysize
+
+famconf_all_t <- famconf_all[ , c("pid_10","total_asset_10","lg_asset_10","ihs_asset_10","lg_asset_10_n0", "second_home_10","male","age_10",
+                                  "age_10_sqr","age_10_cub","familysize_10","total_income_10","lg_per_net_income_10",
+                                  "total_net_income_10","per_total_income_10","per_net_income_10")]
+
+fam <- merge(fam, famconf_all_t, by="pid_10", all = T)
+
+fam$wave <- as.factor(fam$wave)
+
+
+
+
+fams <- fam[fam$select==1 | is.na(fam$select),]  # 1793 person-years for the outcome equation
+table(fams$owner, useNA = "always") # 614 owner person-years in the outcome sample
+nrow(fam[fam$select==0 & !is.na(fam$select),])       # 20482 person-years for the selection equation
+fams <- fams[order(fams$pid_10, fams$wave),]
+
+## econ 12 
+
+famecon12 <- read_dta("/Users/Ang/Desktop/data/cfps2012family_092015compress.dta")
+
+famecon12$fincome_12 <- famecon12$fincome1
+famecon12$fincome_12_adj <- famecon12$fincome1_adj
+famecon12$fincome_12_per <- famecon12$fincome1_per
+famecon12$fincome_12_per_adj <- famecon12$fincome1_per_adj
+famecon12$familysize_12 <- famecon12$familysize
+famecon12$houseprice_12 <- famecon12$houseprice1_best
+famecon12 <- famecon12[,c("fid12", "fincome_12", "fincome_12_adj", "fincome_12_per", "fincome_12_per_adj","familysize_12","houseprice_12")]
+
+fam <- merge(fam, famecon12, by.x = "fid",by.y = "fid12", all=T)
+
+## econ 14
+
+famecon14 <- read_dta("/Users/Ang/Desktop/data/Ecfps2014famecon_170630.dta")
+
+famecon14$fincome_14 <- famecon14$fincome1
+famecon14$fincome_14_per <- famecon14$fincome1_per
+famecon14$familysize_14 <- famecon14$familysize
+
+famecon14 <- famecon14[,c("fid14", "fincome_14", "fincome_14_per","familysize_14")]
+
+fam <- merge(fam, famecon14, by.x = "fid",by.y = "fid14", all=T)
+
+## econ 16
+
+famecon16 <- read_dta("/Users/Ang/Desktop/data/cfps2016famecon_201807.dta")
+
+famecon16$fincome_16 <- famecon16$fincome1
+famecon16$fincome_16_per <- famecon16$fincome1_per
+famecon16$familysize_16 <- famecon16$familysize16
+
+famecon16 <- famecon16[,c("fid16", "fincome_16", "fincome_16_per","familysize_16")]
+
+fam <- merge(fam, famecon16, by.x = "fid",by.y = "fid16", all=T)
+
+fam <- fam[!is.na(fam$pid_10),]
+fam <- fam[order(fam$pid_10, fam$wave),]
+
+fam$fincome <- NA
+fam$fincome[fam$wave==1] <- fam$fincome_12[fam$wave==1]
+fam$fincome[fam$wave==2] <- fam$fincome_14[fam$wave==2]
+fam$fincome[fam$wave==3] <- fam$fincome_16[fam$wave==3]
+
+fam$lg_famincome <- log(fam$fincome)
+hist(fam$lg_famincome)
+summary(fam$lg_famincome)
+
+min(na.omit(fam$fincome)) 
+
+
+# the variable below indicates the average household income since becoming independent and home buying (including the boundaries)
+# for example, for someone who become independent in 2012 and a home owner in 2014, it's the average of 2012 income and 2014 income
+
+
+fam$fincome_mean <- NA
+fam$fincome_mean[fam$select_dura==1 & fam$wave==3] <- fam$fincome_16[fam$select_dura==1 & fam$wave==3]
+
+fam$fincome_mean[fam$select_dura==2 & fam$wave==2] <- fam$fincome_14[fam$select_dura==2 & fam$wave==2]
+fam$fincome_mean[fam$select_dura==2 & fam$wave==3] <- (fam$fincome_14[fam$select_dura==2 & fam$wave==3] + fam$fincome_16[fam$select_dura==2 & fam$wave==3])/2
+
+fam$fincome_mean[fam$select_dura==3 & fam$wave==1] <- fam$fincome_12[fam$select_dura==3 & fam$wave==1]
+fam$fincome_mean[fam$select_dura==3 & fam$wave==2] <- (fam$fincome_12[fam$select_dura==3 & fam$wave==2] + fam$fincome_14[fam$select_dura==3 & fam$wave==2])/2
+fam$fincome_mean[fam$select_dura==3 & fam$wave==3] <- (fam$fincome_12[fam$select_dura==3 & fam$wave==3] + fam$fincome_14[fam$select_dura==3 & fam$wave==3] + fam$fincome_16[fam$select_dura==3 & fam$wave==3])/3
+
+
+fam$lg_fincome_mean <- log(fam$fincome_mean)
+hist(fam$lg_fincome_mean)
+summary(fam$lg_fincome_mean)
+sum(!is.na(fam$lg_fincome_mean))   # 1495
+
+#####
+adult10 <- read_dta("/Users/Ang/Desktop/data/2010famconf_072016.dta")
+adult10 <- adult10[adult10$pid %in% fam$pid_10,]
+
+adult10$not_living_at_home_10 <- as.factor(adult10$tb6_a_p)
+adult10$not_married_10 <- as.factor(adult10$tb3_a_p)
+adult10$edu_10 <- adult10$tb4_a_p
+
+table(adult10$tb4_a_p)
+table(adult10$not_married_10)
+table(adult10$not_living_at_home_10)
+#######
+
+
+
+summary(glm(owner ~  male + lg_asset_10_n0 + wave, data = fam[fam$select==1,],family = "binomial"(link = "probit")))
+
+
+
+
+sum(!is.na(fam$owner) & !is.na(fam$lg_asset_10_n0) & !is.na(fam$lg_fincome_mean) & !is.na(fam$wave) & !is.na(fam$male))
+
+out  <- gjrm(list(select ~ male + age_10 + age_10_sqr + age_10_cub + lg_asset_10_n0 + lg_per_net_income_10 + familysize + wave, 
+                  owner ~  male + lg_asset_10_n0 + lg_per_net_income_10 + familysize + wave), 
+             data = fam[!is.na(fam$owner),], 
+             margins = c("probit", "probit"),
+             Model = "BSS",
+             BivD = "N")
+
+summary(out)
+
+summary(glm(select ~ male + age_10 + age_10_sqr + age_10_cub + lg_asset_10 + wave, family = binomial, data = fam))
+
+summary(heckit(select ~ male + age_10 + age_10_sqr + age_10_cub + lg_asset_10_n0 + lg_per_net_income_10 + familysize + wave,
+              owner ~  male + lg_asset_10_n0 + lg_per_net_income_10 + familysize + wave,
+              data = fam))
+
+# possible IVs:
+# age (controlling for marriage at the previous period, or controlling for marriage at both the previous wave and the current wave), parental age, one-parent-household (in the presence of parental household wealth), parents-children relationship/attitudes toward each other
+# the number of siblings economically dependent on parents in 2010 (instead of the total number of siblings)
+# graduation
+
+
+
+# mechanisms: direct transfers of financial resources, saving behavior of the offspring, socialization, assotative mating, economic gains of the offspring
