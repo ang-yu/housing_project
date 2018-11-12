@@ -1,3 +1,4 @@
+# Nov. 12, 2018
 
 rm(list=ls())
 
@@ -6,6 +7,8 @@ library("haven")
 library("GJRM")
 library("tidyr")
 library("sampleSelection")
+library("data.table")
+library("foreign")
 
 
 famconf10 <- read_dta("/Users/Ang/Desktop/data/2010famconf_072016.dta")   # 57155
@@ -283,6 +286,24 @@ famconf_all$at_school_12 <- NA
 famconf_all$at_school_12[!is.na(famconf_all$at_school_12.x)] <- famconf_all$at_school_12.x[!is.na(famconf_all$at_school_12.x)]
 famconf_all$at_school_12[!is.na(famconf_all$at_school_12.y)] <- famconf_all$at_school_12.y[!is.na(famconf_all$at_school_12.y)]
 table(famconf_all$at_school_12, useNA = "always")
+
+
+table(famconf_all$t1_c1_10, useNA = "always")
+table(famconf_all$t1_c2_10, useNA = "always")
+table(famconf_all$t1_c3_10, useNA = "always")
+
+famconf_all$have_child_10 <- 0
+famconf_all$have_child_10[famconf_all$t1_c1_10==1] <- 1
+famconf_all$have_child_10[famconf_all$t1_c2_10==1] <- 1
+famconf_all$have_child_10[famconf_all$t1_c3_10==1] <- 1
+famconf_all$have_child_10[famconf_all$t1_c4_10==1] <- 1
+famconf_all$have_child_10[famconf_all$t1_c5_10==1] <- 1
+famconf_all$have_child_10[famconf_all$t1_c6_10==1] <- 1
+famconf_all$have_child_10[famconf_all$t1_c7_10==1] <- 1
+famconf_all$have_child_10[famconf_all$t1_c8_10==1] <- 1
+famconf_all$have_child_10[famconf_all$t1_c9_10==1] <- 1
+
+table(famconf_all$have_child_10)
 
 
 crossyear <- read_dta("/Users/Ang/Desktop/data/Cfps2016crossyearid_201807.dta")
@@ -669,9 +690,11 @@ fam <- merge(fam, famconf_all_t, by=c("pid_10","wave"), all=T)
 famconf_all_t <- famconf_all[ , c("pid_10","urban_self_defined_10","fid10_16","phy_in_10","num_parents_children","p_age_10","p_educ_10","p_party_10","p_employed_10","p_bad_health_10","p_both_phy_in_10")]
 fam <- merge(fam, famconf_all_t, by=c("pid_10"), all=T)
 
-famconf_all_t <- famconf_all[ , c("pid_10","hk10","atschool2010","jobstatus_10","edu_10","income_10","marriage_10","educ_10")]
+famconf_all_t <- famconf_all[ , c("pid_10","hk10","atschool2010","jobstatus_10","edu_10","income_10","marriage_10","educ_10","married_10","have_child_10")]
 fam <- merge(fam, famconf_all_t, by=c("pid_10"), all=T)
 
+famconf_all_t <- famconf_all[ , c("pid_10","rswt_nat10", "rswt_res10", "rswt_natpn1016", "rswt_respn1016")]
+fam <- merge(fam, famconf_all_t, by=c("pid_10"), all=T)
 
 fam <- fam[fam$wave>1,]
 fam$wave[fam$wave==2] <- 1
@@ -721,10 +744,10 @@ famecon10$lg_asset_10_n0 <- log(famecon10$total_asset_10_n0)
 
 famecon10$ihs_asset_10 <- log(sqrt((famecon10$total_asset)^2+1)+famecon10$total_asset)
 
-famecon10$percen_rank <- NA
-famecon10$percen_rank[!is.na(famecon10$total_asset)] <- rank(famecon10$total_asset[!is.na(famecon10$total_asset)])/length(famecon10$total_asset[!is.na(famecon10$total_asset)])
-summary(famecon10$percen_rank)
-sum(is.na(famecon10$percen_rank))
+famecon10$total_asset_10_percen_rank <- NA
+famecon10$total_asset_10_percen_rank[!is.na(famecon10$total_asset)] <- rank(famecon10$total_asset[!is.na(famecon10$total_asset)])/length(famecon10$total_asset[!is.na(famecon10$total_asset)])
+summary(famecon10$total_asset_10_percen_rank)
+sum(is.na(famecon10$total_asset_10_percen_rank))
 
 famecon10$second_home_10 <- famecon10$fd7
 famecon10$second_home_10[famecon10$fd1!=1 & famecon10$fd1!=2 & famecon10$fd1!=6 & famecon10$fd1!=7 ] <- 0 # if not living in a house owned by self or family member
@@ -736,12 +759,17 @@ famecon10$total_net_income_10 <- famecon10$faminc_net
 famecon10$per_total_income_10 <- famecon10$indinc
 famecon10$per_net_income_10 <- famecon10$indinc_net
 
+famecon10$total_net_income_10_percen_rank <- NA
+famecon10$total_net_income_10_percen_rank[!is.na(famecon10$total_net_income_10)] <- rank(famecon10$total_net_income_10[!is.na(famecon10$total_net_income_10)])/length(famecon10$total_net_income_10[!is.na(famecon10$total_net_income_10)])
+summary(famecon10$total_net_income_10_percen_rank)
+sum(is.na(famecon10$total_net_income_10_percen_rank))
+
 famecon10$lg_per_net_income_10 <- log(famecon10$per_net_income_10)
 summary(famecon10$lg_per_net_income_10)
 
 
 famecon10 <- famecon10[,c("fid","total_asset_10","lg_asset_10","ihs_asset_10","lg_asset_10_n0","second_home_10","familysize","total_income_10",
-                          "total_net_income_10","per_total_income_10","per_net_income_10", "lg_per_net_income_10","percen_rank")]
+                          "total_net_income_10","per_total_income_10","per_net_income_10", "lg_per_net_income_10","total_asset_10_percen_rank","total_net_income_10_percen_rank")]
 
 famconf_all <- merge(famconf_all, famecon10, by.x="fid10_16", by.y="fid", all=T)
 famconf_all$male <- famconf_all$tb2_a_p_16
@@ -752,7 +780,7 @@ famconf_all_t$familysize_10 <- famconf_all_t$familysize
 
 famconf_all_t <- famconf_all[ , c("pid_10","total_asset_10","lg_asset_10","ihs_asset_10","lg_asset_10_n0", "second_home_10","male","age_10",
                                   "age_10_sqr","age_10_cub","familysize_10","total_income_10","lg_per_net_income_10",
-                                  "total_net_income_10","per_total_income_10","per_net_income_10","percen_rank")]
+                                  "total_net_income_10","per_total_income_10","per_net_income_10","total_asset_10_percen_rank","total_net_income_10_percen_rank")]
 
 fam <- merge(fam, famconf_all_t, by="pid_10", all = T)
 
@@ -861,6 +889,9 @@ fam$non_agri_hukou_10 <- as.factor(fam$non_agri_hukou_10)
 fam$atschool2010 <- as.factor(fam$atschool2010)
 fam$edu_10 <- as.factor(fam$edu_10)
 fam$male <- as.factor(fam$male)
+fam$educ_10 <- as.factor(fam$educ_10)
+fam$married_10 <- as.factor(fam$married_10)
+fam$have_child_10 <- as.factor(fam$have_child_10)
 
 table(fam$jobstatus_10)
 fam$employed_10 <- NA
@@ -885,9 +916,76 @@ fam$age_10_center_sqr <- (fam$age_10_center)^2
 fam$p_age_10_center <- fam$p_age_10-mean(fam$p_age_10, na.rm = T)
 fam$p_age_10_center_sqr <- (fam$p_age_10_center)^2
 
-fam <- fam[ , -c("hk10","jobstatus_10")]
+sum(fam$rswt_nat10>0 & !is.na(fam$rswt_nat10))
+sum(fam$rswt_res10>0 & !is.na(fam$rswt_res10))
+sum(fam$rswt_natpn1016>0 & !is.na(fam$rswt_natpn1016))
+sum(fam$rswt_respn1016>0 & !is.na(fam$rswt_respn1016))
 
-summary(glm(owner ~  male + percen_rank + wave, data = fam[fam$select==1,],family = "binomial"(link = "probit")))
+fam$rswt_natpn1016[fam$rswt_natpn1016<0] <- NA
+
+
+fam_nom <- fam[ , c("fid", "pid_10","select", "owner", "male", "total_asset_10_percen_rank","total_net_income_10_percen_rank","second_home_10", "wave", "p_educ_10", "p_age_10_center", "p_age_10_center_sqr", "p_party_10", "p_bad_health_10", "p_employed_10", "num_parents_children", "lg_per_net_income_10", "educ_10", "married_10", "have_child_10", "age_10_center", "age_10_center_sqr", "familysize_10", "phy_in_10", "p_both_phy_in_10","rswt_natpn1016","urban_self_defined_10")]
+fam_nom <- na.omit(fam_nom)
+nrow(fam_nom)
+write.csv(fam_nom, "fam.nom.csv", row.names = F)
+write.dta(fam_nom, "fam.nom.dta")
+
+
+
+# *
+summary(heckit(select ~ male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10,
+               data = fam,
+               method = "ml"),
+               weights = fam$rswt_natpn1016) # (closer)
+
+summary(heckit(select ~ male + percen_rank + percen_rank*male + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + percen_rank + percen_rank*male + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10,
+               data = fam[!is.na(fam$owner),],
+               method = "ml")) # (closer)
+
+summary(heckit(select ~ male + percen_rank + percen_rank*male + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + percen_rank + percen_rank*male + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10,
+               data = fam,
+               method = "2step"))
+
+summary(glm(owner ~  male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10, data = fam[fam$select==1,],family = "binomial"(link = "probit")))
+
+summary(heckit(select ~ male + ihs_asset_10 + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + ihs_asset_10 + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10,
+               data = fam))
+
+summary(heckit(select ~ male + lg_asset_10 + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
+               owner ~  male + lg_asset_10 + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10,
+               data = fam))
+
+
+
+
+summary(gjrm(list(select ~ male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10, 
+                  owner ~  male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + educ_10 + married_10 + have_child_10),
+                  data = fam_nom, 
+             margins = c("probit", "probit"),
+             Model = "BSS",
+             BivD = "N"))
+
+out <- gjrm(list(select ~ male + lg_asset_10_n0 + wave,
+                  owner ~  male + lg_asset_10_n0),
+             data = fam, 
+             margins = c("probit", "probit"),
+             Model = "BSS",
+             BivD = "N")
+
+out  <- gjrm(list(y1 ~ x1 + x2 + x3, 
+                  y2 ~ x1 + x2 + x3), 
+             data = dataSim, 
+             margins = c("probit", "probit"),
+             Model = "B")
+
+
+# mechanisms: direct transfers of financial resources, saving behavior of the offspring, socialization, assotative mating, economic gains of the offspring
+
+
 
 summary(heckit(select ~ male + age_10 + age_10_sqr + age_10_cub + ihs_asset_10 + num_parents_children + p_age_10 + p_educ_10 + p_party_10 + p_employed_10 + p_bad_health_10 + wave + atschool2010 + edu_10 + lg_income_10 + employed_10 + never_married_10 + familysize_10 + phy_in_10 + p_both_phy_in_10,
                owner ~  male + age_10 + age_10_sqr + age_10_cub + ihs_asset_10 + num_parents_children + p_age_10 + p_educ_10 + p_party_10 + p_employed_10 + p_bad_health_10 + wave + atschool2010 + edu_10 + lg_income_10 + employed_10 + never_married_10,
@@ -913,34 +1011,3 @@ summary(heckit(select ~ male + percen_rank + wave + p_educ_10 + p_age_10_center 
                owner ~  male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10,
                data = fam))
 
-
-summary(heckit(select ~ male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10 + age_10_center + age_10_center_sqr + familysize_10 + phy_in_10 + p_both_phy_in_10,
-               owner ~  male + percen_rank + wave + p_educ_10 + p_age_10_center + p_age_10_center_sqr + p_party_10 + p_bad_health_10 + p_employed_10 + num_parents_children + lg_per_net_income_10,
-               data = fam))
-
-
-sum(!is.na(fam$owner) & !is.na(fam$lg_asset_10_n0) & !is.na(fam$lg_fincome_mean) & !is.na(fam$wave) & !is.na(fam$male))
-
-out  <- gjrm(list(select ~ male + age_10 + age_10_sqr + age_10_cub + lg_asset_10_n0 + lg_per_net_income_10 + familysize + wave, 
-                  owner ~  male + lg_asset_10_n0 + lg_per_net_income_10 + familysize + wave), 
-             data = fam[!is.na(fam$owner),], 
-             margins = c("probit", "probit"),
-             Model = "BSS",
-             BivD = "N")
-
-summary(out)
-
-summary(glm(select ~ male + age_10 + age_10_sqr + age_10_cub + lg_asset_10 + wave, family = binomial, data = fam))
-
-summary(heckit(select ~ male + age_10 + age_10_sqr + age_10_cub + lg_asset_10_n0 + lg_per_net_income_10 + familysize + wave,
-              owner ~  male + lg_asset_10_n0 + lg_per_net_income_10 + familysize + wave,
-              data = fam))
-
-# possible IVs:
-# age (controlling for marriage at the previous period, or controlling for marriage at both the previous wave and the current wave), parental age, one-parent-household (in the presence of parental household wealth), parents-children relationship/attitudes toward each other
-# the number of siblings economically dependent on parents in 2010 (instead of the total number of siblings)
-# graduation
-
-
-
-# mechanisms: direct transfers of financial resources, saving behavior of the offspring, socialization, assotative mating, economic gains of the offspring
