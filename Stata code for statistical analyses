@@ -1,0 +1,145 @@
+# 08/24/2019
+
+# Ang Yu
+
+
+*** time-constant version
+
+use "/Users/Ang/Desktop/SOE reform and intergenerational occupation mobility/thesis project/fam_nom_constant.dta", replace
+
+gen select1 = select - 1
+gen owner1 = owner - 1
+
+
+** percentile measure
+
+eststo model1: heckprobit owner1 i.male i.wave /// 
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  ///
+, select(select1 = i.male i.wave ///
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  /// 
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_10 i.urban_self_defined_10) vce(cluster fid) 
+
+eststo model2: heckprobit owner1 i.male i.wave /// 
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  ///
+total_asset_10_percen_rank p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children  one_parent_q_10 ///
+, select(select1 = i.male i.wave ///
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  /// 
+total_asset_10_percen_rank p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children one_parent_q_10  ///
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_10 i.urban_self_defined_10) vce(cluster fid) 
+
+esttab model1 model2 using results1.csv, replace b(%12.2f) scalars(df_m chi2 aic) coeflabels(_cons "Constant") noomitted not
+
+
+** alterntaive measures of parental wealth
+
+eststo model3: heckprobit owner1 i.male i.wave /// 
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  ///
+ihs_asset_10 p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children  one_parent_q_10 ///
+, select(select1 = i.male i.wave ///
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  /// 
+ihs_asset_10 p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children one_parent_q_10  ///
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_10 i.urban_self_defined_10)  vce(cluster fid)
+
+eststo model4: heckprobit owner1 i.male i.wave /// 
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  ///
+second_home_10 p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children  one_parent_q_10 ///
+, select(select1 = i.male i.wave ///
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  /// 
+second_home_10 p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children one_parent_q_10  ///
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_10 i.urban_self_defined_10)  vce(cluster fid)
+
+esttab model3 model4 using results2.csv, replace b(%12.2f) scalars(df_m chi2 aic) coeflabels(_cons "Constant") noomitted not
+
+
+*** time-varying version
+
+use "/Users/Ang/Desktop/SOE reform and intergenerational occupation mobility/thesis project/fam_nom_varying.dta", replace
+
+gen select1 = select - 1
+gen owner1 = owner - 1
+
+eststo model4: heckprobit owner1 i.male i.wave /// 
+i.edu_lagged lg_per_net_income_10 lg_fincome_per i.married_lagged i.have_child_lagged  ///
+, select(select1 = i.male i.wave ///
+i.edu_lagged lg_per_net_income_10 i.married_lagged i.have_child_lagged  /// 
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_lagged i.urban_self_defined_10) vce(cluster fid)
+
+eststo model5: heckprobit owner1 i.male i.wave /// 
+i.edu_lagged lg_per_net_income_10 lg_fincome_per i.married_lagged i.have_child_lagged  ///
+total_asset_percen_rank_lagged p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_lagged i.p_employed_lagged ///
+num_parents_children i.one_parent_q_lagged ///
+, select(select1 = i.male i.wave ///
+i.edu_lagged lg_per_net_income_10 i.married_lagged i.have_child_lagged  /// 
+total_asset_percen_rank_lagged p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_lagged i.p_employed_lagged ///
+num_parents_children i.one_parent_q_lagged  ///
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_lagged i.urban_self_defined_10) vce(cluster fid)
+
+esttab model4 model5 using results3.csv, replace b(%12.2f) scalars(df_m chi2 aic) coeflabels(_cons "Constant") noomitted not
+
+
+
+**** with parental welfare + time-constant and received transfers from relatives + time-varying
+
+use "/Users/Ang/Desktop/SOE reform and intergenerational occupation mobility/thesis project/fam_nom_constant.dta", replace
+
+gen select1 = select - 1
+gen owner1 = owner - 1
+
+
+eststo model6: heckprobit owner1 i.male i.wave /// 
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  ///
+total_asset_10_percen_rank p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children  one_parent_q_10 p_housing_welfare_10 ///
+, select(select1 = i.male i.wave ///
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  /// 
+total_asset_10_percen_rank p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children one_parent_q_10  p_housing_welfare_10 ///
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_10 i.urban_self_defined_10) vce(cluster fid) 
+
+
+use "/Users/Ang/Desktop/SOE reform and intergenerational occupation mobility/thesis project/fam_nom_varying.dta", replace
+
+gen select1 = select - 1
+gen owner1 = owner - 1
+
+
+eststo model7: heckprobit owner1 i.male i.wave /// 
+i.edu_lagged lg_per_net_income_10 lg_fincome_per i.married_lagged i.have_child_lagged  ///
+total_asset_percen_rank_lagged p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_lagged i.p_employed_lagged ///
+num_parents_children  i.one_parent_q_lagged i.transfer ///
+, select(select1 = i.male i.wave ///
+i.edu_lagged lg_per_net_income_10 i.married_lagged i.have_child_lagged  /// 
+total_asset_percen_rank_lagged p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_lagged i.p_employed_lagged ///
+num_parents_children i.one_parent_q_lagged ///
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_lagged i.urban_self_defined_10) vce(cluster fid)
+
+esttab model6 model7 using results4.csv, replace b(%12.2f) scalars(df_m chi2 aic) coeflabels(_cons "Constant") noomitted not
+
+
+
+**** with gender interaction
+
+use "/Users/Ang/Desktop/SOE reform and intergenerational occupation mobility/thesis project/fam_nom_constant.dta", replace
+
+gen select1 = select - 1
+gen owner1 = owner - 1
+
+
+eststo model8: heckprobit owner1 i.male i.wave /// 
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  ///
+total_asset_10_percen_rank p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children  one_parent_q_10  i.male#c.total_asset_10_percen_rank ///
+, select(select1 = i.male i.wave ///
+i.edu_10 lg_per_net_income_10 i.married_10 i.have_child_10  /// 
+total_asset_10_percen_rank p_age_10_center p_age_10_center_sqr i.p_educ_10 i.p_party_10 i.p_bad_health_10 i.p_employed_10 ///
+num_parents_children one_parent_q_10  i.male#c.total_asset_10_percen_rank ///
+age_10_center age_10_center_sqr familysize_10 i.phy_in_10 i.p_both_phy_in_10 i.urban_self_defined_10) vce(cluster fid) 
+
+
+esttab model8 using results5.csv, replace b(%12.2f) scalars(df_m chi2 aic) coeflabels(_cons "Constant") noomitted not
