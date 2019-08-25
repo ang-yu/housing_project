@@ -1,5 +1,7 @@
-# 08/13/2019
+# 08/24/2019
+
 # Ang Yu
+
 
 rm(list=ls())
 
@@ -1357,7 +1359,12 @@ famecon12$fincome_12_per_adj <- famecon12$fincome1_per_adj
 famecon12$familysize_12 <- famecon12$familysize
 famecon12$houseprice_12 <- famecon12$houseprice1_best    # not usable, too many missing
 famecon12$total_asset_12 <- famecon12$total_asset
-famecon12 <- famecon12[,c("fid12", "fincome_12", "fincome_12_adj", "fincome_12_per", "fincome_12_per_adj","familysize_12","houseprice_12","total_asset_12")]
+
+famecon12$transfer_12 <- NA
+famecon12$transfer_12[famecon12$fn3==0] <- 0
+famecon12$transfer_12[famecon12$fn3>0] <- 1
+
+famecon12 <- famecon12[,c("fid12", "fincome_12", "fincome_12_adj", "fincome_12_per", "fincome_12_per_adj","familysize_12","houseprice_12","total_asset_12","transfer_12")]
 
 fam <- merge(fam, famecon12, by.x = "fid",by.y = "fid12", all=T)
 
@@ -1370,7 +1377,11 @@ famecon14$fincome_14_per <- famecon14$fincome1_per
 famecon14$familysize_14 <- famecon14$familysize
 famecon14$total_asset_14 <- famecon14$total_asset
 
-famecon14 <- famecon14[,c("fid14", "fincome_14", "fincome_14_per","familysize_14","total_asset_14")]
+famecon14$transfer_14 <- NA
+famecon14$transfer_14[famecon14$fn4==0] <- 0
+famecon14$transfer_14[famecon14$fn4>0] <- 1
+
+famecon14 <- famecon14[,c("fid14", "fincome_14", "fincome_14_per","familysize_14","total_asset_14","transfer_14")]
 
 fam <- merge(fam, famecon14, by.x = "fid",by.y = "fid14", all=T)
 
@@ -1382,7 +1393,11 @@ famecon16$fincome_16 <- famecon16$fincome1
 famecon16$fincome_16_per <- famecon16$fincome1_per
 famecon16$familysize_16 <- famecon16$familysize16
 
-famecon16 <- famecon16[,c("fid16", "fincome_16", "fincome_16_per","familysize_16")]
+famecon16$transfer_16 <- NA
+famecon16$transfer_16[famecon16$fn4==0] <- 0
+famecon16$transfer_16[famecon16$fn4>0] <- 1
+
+famecon16 <- famecon16[,c("fid16", "fincome_16", "fincome_16_per","familysize_16","transfer_16")]
 
 fam <- merge(fam, famecon16, by.x = "fid",by.y = "fid16", all=T)
 
@@ -1407,6 +1422,12 @@ fam$fincome_per[fam$wave==2] <- fam$fincome_14_per[fam$wave==2]
 fam$fincome_per[fam$wave==3] <- fam$fincome_16_per[fam$wave==3]
 
 fam$lg_fincome_per <- log(fam$fincome_per)
+
+# time-varying (not lagged) received transfers from relatives
+fam$transfer <- NA
+fam$transfer[fam$wave==1] <- fam$transfer_12[fam$wave==1]
+fam$transfer[fam$wave==2] <- fam$transfer_14[fam$wave==2]
+fam$transfer[fam$wave==3] <- fam$transfer_16[fam$wave==3]
 
 ## time-varying lagged parental wealth
 
@@ -1710,16 +1731,24 @@ fam$age_10_center_sqr <- (fam$age_10_center)^2
 fam$p_age_10_center <- fam$p_age_10-mean(fam$p_age_10, na.rm = T)
 fam$p_age_10_center_sqr <- (fam$p_age_10_center)^2
 
+sum(is.na(fam$rswt_nat10))
+sum(fam$rswt_nat10==-8)
+fam$rswt_nat10[fam$rswt_nat10<0] <- NA
+sum(is.na(fam$rswt_nat10))   # 7767
+
 sum(fam$rswt_nat10>0 & !is.na(fam$rswt_nat10))
 sum(fam$rswt_res10>0 & !is.na(fam$rswt_res10))
 sum(fam$rswt_natpn1016>0 & !is.na(fam$rswt_natpn1016))
 sum(fam$rswt_respn1016>0 & !is.na(fam$rswt_respn1016))
 
 fam$rswt_natpn1016[fam$rswt_natpn1016<0] <- NA
+sum(is.na(fam$rswt_natpn1016))  # 2736
+
+# and housing welfare 
 
 
 fam_nom_constant <- fam[ , c("fid", "pid_10","select", "owner", "male", "total_asset_10_percen_rank",
-                    "second_home_10", "ihs_asset_10","wave", 
+                    "second_home_10", "ihs_asset_10","wave", "p_housing_welfare_10",
                     "p_educ_10", "p_age_10_center", "p_age_10_center_sqr", "p_party_10", 
                     "p_bad_health_10", "p_employed_10", "one_parent_q_10","num_parents_children", 
                     "lg_per_net_income_10", "edu_10", "married_10", "have_child_10", 
@@ -1732,16 +1761,17 @@ write.csv(fam_nom_constant, "fam_nom_constant.csv", row.names = F)
 write.dta(fam_nom_constant, "fam_nom_constant.dta")
 
 
+## must use baseline measure for "urban_self_defined_10", "phy_in_10", and "familysize_10". otherwise too much sample loss
 
 fam_nom_varying <- fam[, c("fid", "pid_10","select", "owner", "male", "total_asset_percen_rank_lagged","wave", 
                            "p_educ_10", "p_age_10_center", "p_age_10_center_sqr", "p_party_10", 
                            "p_bad_health_lagged", "p_employed_lagged", "one_parent_q_lagged","num_parents_children", 
                            "lg_fincome_per", "lg_per_net_income_10","edu_lagged", "married_lagged", "have_child_lagged", 
                            "age_10_center", "age_10_center_sqr", "familysize_10", "phy_in_10", 
-                           "p_both_phy_in_lagged","urban_self_defined_10","ihs_asset_lagged","second_home_lagged")]
+                           "p_both_phy_in_lagged","urban_self_defined_10","ihs_asset_lagged","second_home_lagged",
+                           "transfer")]
 fam_nom_varying <- na.omit(fam_nom_varying)
 nrow(fam_nom_varying)
 table(fam_nom_varying$select)
 write.csv(fam_nom_varying, "fam_nom_varying.csv", row.names = F)
 write.dta(fam_nom_varying, "fam_nom_varying.dta")
-
