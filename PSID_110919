@@ -689,17 +689,14 @@ for (i in 1:length(unique(df_long$pid))) {
 summary(df_long$gap)
 hist(df_long$gap)
 
-View(df_long[df_long$pid%in%df_long$pid[df_long$gap>5],c("pid","age","status","gap")])
-
-
-
-
-# View(df_long[,c("pid","age","status")])
-
-
-
-
-
+pid_checking <- df_long$pid[df_long$gap>5]
+View(df_long[df_long$pid%in%pid_checking,c("pid","wave","age","status")])
+# based on visual insepection. there are clearly a lot of people who skipped wave 4 and wave 5 hence get to wave 6 directly from wave 3
+table(df_long$wave)
+View(ind[ind$pid%in%pid_checking,c("pid","status_05","status_07","status_09","status_11","status_13","status_15","status_17")]) 
+# some age are missing in wave 4 and age and status are missing together in wave 5
+# look into this issue!!!
+ 
 
 
 
