@@ -1,4 +1,6 @@
 
+rm(list=ls()) 
+
 setwd("~/Desktop/Research/Housing project/PSID_working")
 
 library("haven")
@@ -87,37 +89,37 @@ ind <- left_join(ind, fam17, by = c("ER34501" = "ER66002"))
 
 # housing status variables
 
-ind$own05 <- NA # Neither owns nor rents will ramain NA
+ind$own05 <- NA 
 ind$own05[ind$ER25028==5] <- 0   # renting
 ind$own05[ind$ER25028==1] <- 1   # owning
-ind$own05[ind$ER25028==8] <- 3  # neither
+ind$own05[ind$ER25028==8] <- 2  # neither
 
-ind$own07 <- NA # Neither owns nor rents will ramain NA
+ind$own07 <- NA 
 ind$own07[ind$ER36028==5] <- 0   # renting
 ind$own07[ind$ER36028==1] <- 1   # owning
 ind$own07[ind$ER36028==8] <- 2   # neither
 
-ind$own09 <- NA # Neither owns nor rents will ramain NA
+ind$own09 <- NA 
 ind$own09[ind$ER42029==5] <- 0   # renting
 ind$own09[ind$ER42029==1] <- 1   # owning
 ind$own09[ind$ER42029==8] <- 2 
 
-ind$own11 <- NA # Neither owns nor rents will ramain NA
+ind$own11 <- NA 
 ind$own11[ind$ER47329==5] <- 0   # renting
 ind$own11[ind$ER47329==1] <- 1   # owning
-ind$own11[ind$ER47329==8] <- 1
+ind$own11[ind$ER47329==8] <- 2
 
-ind$own13 <- NA # Neither owns nor rents will ramain NA
+ind$own13 <- NA 
 ind$own13[ind$ER53029==5] <- 0   # renting
 ind$own13[ind$ER53029==1] <- 1   # owning
 ind$own13[ind$ER53029==8] <- 2
 
-ind$own15 <- NA # Neither owns nor rents will ramain NA
+ind$own15 <- NA 
 ind$own15[ind$ER60030==5] <- 0   # renting
 ind$own15[ind$ER60030==1] <- 1   # owning
 ind$own15[ind$ER60030==8] <- 2
 
-ind$own17 <- NA # Neither owns nor rents will ramain NA
+ind$own17 <- NA 
 ind$own17[ind$ER66030==5] <- 0   # renting
 ind$own17[ind$ER66030==1] <- 1   # owning
 ind$own17[ind$ER66030==8] <- 2 
@@ -214,16 +216,15 @@ ind$inde_owning_17 <- NA
 ind$inde_owning_17[!(ind$ref17==1 & ind$own17==1) & !is.na(ind$ref17) & !is.na(ind$own17)] <- 0  # not missing information, but not in independent owning
 ind$inde_owning_17[ind$ref17==1 & ind$own17==1] <- 1  # independent owning (head/wife status + owning)
 
-## non-independent-renting and non-independent-owning (namely, the information is there, but the person is not in the previous two statuses)
 ind$status_05 <- NA
 ind$status_05[ind$inde_renting_05==1] <- 1  # independent renting
 ind$status_05[ind$inde_owning_05==1] <- 2  # independent owning
 ind$status_05[!is.na(ind$inde_renting_05) & !is.na(ind$inde_owning_05) & ind$inde_renting_05!=1 & ind$inde_owning_05!=1] <- 0  # neither. but have valid information 
-# (four possibilities corresponding to status 2)
-# 1. head/wife status, neither renting mor owning
-# 2. non-head/wife status, renting 
-# 3. non-head/wife status, owning
-# 4. non-head/wife status, neither renting nor owning 
+# (four possibilities corresponding to status 0)
+# 1. head/wife status, neither renting nor owning (maybe living in residence owned by parents or other people? So they don't own the place but they also don't pay rents)
+# 2. non-head/wife status, renting (meaning I can infer that the housing is on parental support)
+# 3. non-head/wife status, owning (same)
+# 4. non-head/wife status, neither renting nor owning (same)
 # note that I've checked and this indeed works. The reason is as long as both the individual and the family are interviewed in each given year, head/wife status and housing status do NOT have any NA in the original dataset. 
 # Hence, there are only six possible combinations of the housing variable and the head/wife variable for interviewed individuals and families. Apart from independent renting and independent owning, all the four possibilies are "non" status. 
 
