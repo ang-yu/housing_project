@@ -4,7 +4,7 @@ rm(list=ls())
 setwd("~/Desktop/Research/Housing project/PSID_working")
 
 library("haven")
-library("dplyr")
+library("tidyverse")
 
 options(scipen=999)
 
@@ -220,6 +220,7 @@ ind$status_05 <- NA
 ind$status_05[ind$inde_renting_05==1] <- 1  # independent renting
 ind$status_05[ind$inde_owning_05==1] <- 2  # independent owning
 ind$status_05[!is.na(ind$inde_renting_05) & !is.na(ind$inde_owning_05) & ind$inde_renting_05!=1 & ind$inde_owning_05!=1] <- 0  # neither. but have valid information 
+table(ind$status_05, useNA = "always")
 # (four possibilities corresponding to status 0)
 # 1. head/wife status, neither renting nor owning (maybe living in residence owned by parents or other people? So they don't own the place but they also don't pay rents)
 # 2. non-head/wife status, renting (meaning I can infer that the housing is on parental support)
@@ -272,6 +273,7 @@ length(unique(df$pid)) == nrow(df)  # True
 # (TAS 2017 included people who enter the TAS after age 18)
 # only the original CDS cohort members have full set of covariates 
 df <- df[!df$TA171988 %in% 0,] # from 4058 to 2942
+# This variable is the weight variable in TAS2017. it equaling to 0 means the respondent did not participate in CDS 1997
 
 ## sex ##
 df$male <- NA
@@ -336,7 +338,7 @@ df$race_1[df$TA050883%in%1:7] <- 3  # if is hispanic, then code race to be "othe
 table(df$race_1, useNA = "always")
 table(df$tas_year_1, useNA = "always")
 sum(is.na(df$race_1))-sum(is.na(df$tas_year_1)) 
-sum(!is.na(df$tas_year_1))
+sum(!is.na(df$tas_year_1))  # the tas_year variables are generated later
 sum(df$race_1%in%1:2)
 # Hence, out of 745 respondents in TAS first wave, 4 don't have valid race information. 
 # In wave 1, there are 649 non-hispanic Blacks and Whites
@@ -517,12 +519,12 @@ df$race[is.na(df$race)] <- df$race_4[is.na(df$race)]
 df$race[is.na(df$race)] <- df$race_3[is.na(df$race)]
 df$race[is.na(df$race)] <- df$race_2[is.na(df$race)]
 df$race[is.na(df$race)] <- df$race_1[is.na(df$race)]
-table(df$race, useNA = "always")  # 10 NAs in the end
+table(df$race, useNA = "always")  # 3 NAs in the end
 
 
 ### time varying variables ###
 # Index note:
-# The index for each variable denotes the number of wave. 
+# The index n for each variable denotes nth wave. 
 # 1: 2005; 2:2007; 3:2009; 4:2011; 5:2013; 6:2015; 7:2017
 
 ## interview date for each wave of TAS ##
@@ -561,7 +563,7 @@ df$psid_month_2 <- df$ER36012
 df$psid_month_1 <- df$ER25012
 
 ## the wave at which the respondent made the first independent renting transition
-# (I checked. Using inde_renting/inde_owning and status to construct retning_wave and owning_wave will produce the same results)
+# (I checked. Using "status" to construct retning_wave and owning_wave will produce the same results)
 df$renting_wave <- NA
 df$renting_wave[(df$inde_renting_17%in%1) & !(df$inde_renting_15%in%1) & !(df$inde_renting_13%in%1) & !(df$inde_renting_11%in%1) & !(df$inde_renting_09%in%1) & !(df$inde_renting_07%in%1) & !(df$inde_renting_05%in%1)] <- 7
 df$renting_wave[(df$inde_renting_15%in%1) & !(df$inde_renting_13%in%1) & !(df$inde_renting_11%in%1) & !(df$inde_renting_09%in%1) & !(df$inde_renting_07%in%1) & !(df$inde_renting_05%in%1)] <- 6
@@ -571,7 +573,7 @@ df$renting_wave[(df$inde_renting_09%in%1) & !(df$inde_renting_07%in%1) & !(df$in
 df$renting_wave[(df$inde_renting_07%in%1) & !(df$inde_renting_05%in%1)] <- 2
 df$renting_wave[(df$inde_renting_05%in%1)] <- 1
 table(df$renting_wave)
-sum(table(df$renting_wave)) # 1706 made the idnependent renting transition cumulatively
+sum(table(df$renting_wave)) # 1706 made the independent renting transition cumulatively
 
 ## the wave at which the respondent made the first home-ownership transition
 df$owning_wave <- NA
@@ -583,7 +585,9 @@ df$owning_wave[(df$inde_owning_09%in%1) & !(df$inde_owning_07%in%1) & !(df$inde_
 df$owning_wave[(df$inde_owning_07%in%1) & !(df$inde_owning_05%in%1)] <- 2
 df$owning_wave[(df$inde_owning_05%in%1)] <- 1
 table(df$owning_wave)
-sum(table(df$owning_wave)) # 660 made the ownership transition cumulatively
+sum(table(df$owning_wave)) # 573 made the ownership transition cumulatively
+
+# Below, I'll assess how much the boomerang children and ownership-losing are a problem
 
 ## previously has had independent renting
 df$prev_inde_renting_07 <- 0
@@ -612,6 +616,58 @@ df$prev_inde_owning_15 <- 0
 df$prev_inde_owning_15[df$inde_owning_05==1 | df$inde_owning_07==1 | df$inde_owning_09==1 | df$inde_owning_11==1 | df$inde_owning_13==1] <- 1
 df$prev_inde_owning_17 <- 0
 df$prev_inde_owning_17[df$inde_owning_05==1 | df$inde_owning_07==1 | df$inde_owning_09==1 | df$inde_owning_11==1 | df$inde_owning_13==1 | df$inde_owning_15==1] <- 1
+
+table(df$status_05, useNA = "always")
+table(df$status_07, useNA = "always")
+table(df$status_09, useNA = "always")
+table(df$status_11, useNA = "always")
+table(df$status_13, useNA = "always")
+table(df$status_15, useNA = "always")
+table(df$status_17, useNA = "always")
+
+# Below I plot the rates of transitons across states
+flow_table_function <- function(x, y) {
+  
+  c(table(df$status_05, df$status_07)[x,y]/sum(table(df$status_05)),
+    table(df$status_07, df$status_09)[x,y]/sum(table(df$status_07)),
+    table(df$status_09, df$status_11)[x,y]/sum(table(df$status_09)),
+    table(df$status_11, df$status_13)[x,y]/sum(table(df$status_13)),
+    table(df$status_13, df$status_15)[x,y]/sum(table(df$status_15)),
+    table(df$status_15, df$status_17)[x,y]/sum(table(df$status_17)))
+  
+}
+
+neither_to_renting <- flow_table_function(1,2)
+neither_to_owning <- flow_table_function(1,3)
+renting_to_neither <- flow_table_function(2,1)
+renting_to_owning <- flow_table_function(2,3)
+owning_to_renting <- flow_table_function(3,2)
+owning_to_neither <- flow_table_function(3,1)
+
+x <- rep(seq(2,7), 6) # wave 2 to wave 7, repeated for 6 times
+y <- c(renting_to_owning, neither_to_renting, neither_to_owning, renting_to_neither, owning_to_renting, owning_to_neither)
+group <- c(rep(1, 6), rep(2, 6), rep(3, 6), rep(4, 6), rep(5, 6), rep(6, 6))
+
+flow_plot_df <- as.data.frame(cbind(x,y,group))
+flow_plot_df$y <- flow_plot_df$y*100 # so that y is the percentage
+flow_plot_df$Group <- factor(flow_plot_df$group, 
+                                labels=c("renting to owning","neither to renting","neither to owning","renting to neither", 
+                                         "owning to renting", "owning to neither"))
+# note that the order of the labels needs to be consistent with the order of the values in the y vector
+
+ggplot(flow_plot_df, aes(x=x, y=y, group=group)) +
+  geom_line(aes(linetype=Group, color=Group)) +
+  geom_point() +
+  xlab("Wave") +
+  ylab("Percentage") +
+  ggtitle("Rates of Transitions across States") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(caption = "Note: Renting and owning refer to independent renting and owning.\nAnd most people do not change state between two waves.") +
+  theme(plot.caption = element_text(hjust = 0)) +
+  scale_y_continuous(breaks = c(2.5, 5, 7.5, 10, 12.5))
+
+# df_clean <- df[!is.na(df$status_05) & !is.na(df$status_07) & !is.na(df$status_09) & !is.na(df$status_11) & !is.na(df$status_13) & !is.na(df$status_15) & !is.na(df$status_17), ]
+# from 2942 to 2364
 
 
 ### set up the long data form
@@ -648,21 +704,24 @@ df_long <- df_long[order(df_long$pid),]
 ## age at TAS interview ##
 # first recode the interview month and birth month to decimalism
 df_long$bmonth_r <- df_long$bmonth/12
-df_long$psid_month_r <- df_long$psid_month/12
+df_long$psid_month_r <- df_long$psid_month/12  # note that PSID month and year are from PSID family survey
 
 # then generate composite times for interview and birth
 df_long$birth_time <- df_long$byear + df_long$bmonth_r 
 df_long$int_time <- df_long$psid_year + df_long$psid_month_r
 
-# take the difference (what's age at interview in terms of month?) and divid by 12
+# take the difference (what's age at the interview of PSID family survery in terms of month?) and divid by 12
+# note that I use the PSID family survery time because the independence and housing status variables are drawn from PSID family. 
 df_long$age_inmonth <- df_long$int_time - df_long$birth_time
 df_long$age <- as.integer(df_long$age_inmonth)
 table(df_long$age, useNA = "always")
 
 # View(df_long[,c("pid","age","psid_year","tas_year")])
+sum(is.na(df_long$age))/nrow(df_long) # 5% missing age at interview. These are just families that miss the family interview in certain years.
 
 # only keep person-years when the repsondent is older than 18
-df_long <- df_long[df_long$age>=18 & !is.na(df_long$age),] # from 20594 to 13495. This step also dropps all person-years that are not in interview
+df_long <- df_long[df_long$age>=18 & !is.na(df_long$age),] # from 20594 to 13495. This step also dropps all person-years that are not captured by family interview
+sum(is.na(df_long$age))
 
 # View(df_long[,c("pid","age","status")])
 
