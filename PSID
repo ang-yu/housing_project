@@ -259,6 +259,16 @@ ind$status_17[ind$inde_renting_17==1] <- 1  # independent renting
 ind$status_17[ind$inde_owning_17==1] <- 2  # independent owning
 ind$status_17[!is.na(ind$inde_renting_17) & !is.na(ind$inde_owning_17) & ind$inde_renting_17!=1 & ind$inde_owning_17!=1] <- 0  # neither. but have valid information 
 
+# Is it possible to use the reference status to reduce missingness in the status variable? (status must equal to 0 if reference status is 0, even if the housing status is missing)
+table(ind$status_05, ind$ref05, useNA = "always")
+table(ind$status_07, ind$ref07, useNA = "always")
+table(ind$status_09, ind$ref09, useNA = "always")
+table(ind$status_11, ind$ref11, useNA = "always")
+table(ind$status_13, ind$ref13, useNA = "always")
+table(ind$status_15, ind$ref15, useNA = "always")
+table(ind$status_17, ind$ref17, useNA = "always")
+# apart from 2 people in wave 2, it's not possible to subtract more information. I don't think these two people matter. 
+
 ### time constant variables ###
 
 ## pid ##
@@ -676,14 +686,16 @@ ggplot(flow_plot_df, aes(x=x, y=y, group=group)) +
 df_inuse <- df[,c("pid","male","byear","bmonth","race","owning_wave","renting_wave",
               "ref05","ref07","ref09","ref11","ref13","ref15","ref17",
               "own05","own07","own09","own11","own13","own15","own17",
-              "inde_renting_17","inde_renting_15","inde_renting_13","inde_renting_11","inde_renting_09","inde_renting_07","inde_renting_05",
-              "inde_owning_17","inde_owning_15","inde_owning_13","inde_owning_11","inde_owning_09","inde_owning_07","inde_owning_05",
+              "inde_renting_05","inde_renting_07","inde_renting_09","inde_renting_11","inde_renting_13","inde_renting_15","inde_renting_17",
+              "inde_owning_05","inde_owning_07","inde_owning_09","inde_owning_11","inde_owning_13","inde_owning_15","inde_owning_17",
               "status_05","status_07","status_09","status_11","status_13","status_15","status_17",
               "psid_year_1","psid_year_2","psid_year_3","psid_year_4","psid_year_5","psid_year_6","psid_year_7", 
               "psid_month_1","psid_month_2","psid_month_3","psid_month_4","psid_month_5","psid_month_6","psid_month_7",
               "tas_year_1","tas_year_2","tas_year_3","tas_year_4","tas_year_5","tas_year_6","tas_year_7", 
               "tas_month_1","tas_month_2","tas_month_3","tas_month_4","tas_month_5","tas_month_6","tas_month_7"
               )]
+# Note that the order of the time-varying variables in the selection step above matters!!!
+# Geez, what a tricky trap! If the order of each variable is not consistent, the reshape command will fuck up!
 
 # then generate the time-varting variable names in long form
 time_varying_long <- c("ref", "psid_year", "psid_month", "tas_year", "tas_month","inde_renting","inde_owning","status")
@@ -706,21 +718,38 @@ df_long <- df_long[order(df_long$pid),]
 df_long$bmonth_r <- df_long$bmonth/12
 df_long$psid_month_r <- df_long$psid_month/12  # note that PSID month and year are from PSID family survey
 
+sum(is.na(df_long$psid_month_r)&!is.na(df_long$psid_year))  # 106 missing month but not year
+table(is.na(df_long$psid_month_r)&!is.na(df_long$psid_year), df_long$wave) # all 106 are in wave 4
+sum(!is.na(df_long$psid_month_r)&is.na(df_long$psid_year))  # 63 missing year but not month
+table(!is.na(df_long$psid_month_r)&is.na(df_long$psid_year), df_long$wave) # all 63 are also in wave 4
+
+# I decide to use the mean to replace the missing values in wave 4, because otherwise I'll have to get rid of valid records of outcome status, which feels unnecessary.
+# Also, if I don't replace the missing values, there will be dozens of cases in wave 6 where the gap value looks quite high. This was what motivated me to check and do the mean-replacement. (AY 12/08/19) 
+table(df_long$psid_year[df_long$wave==4], useNA = "always")
+df_long$psid_year[df_long$wave==4] <- 2011
+
+table(df_long$psid_month[df_long$wave==4], useNA = "always")
+mean(df_long$psid_month_r[df_long$wave==4], na.rm = T)
+df_long$psid_month_r[df_long$wave==4 & is.na(df_long$psid_month_r)] <- mean(df_long$psid_month_r[df_long$wave==4], na.rm = T)
+
 # then generate composite times for interview and birth
 df_long$birth_time <- df_long$byear + df_long$bmonth_r 
 df_long$int_time <- df_long$psid_year + df_long$psid_month_r
 
-# take the difference (what's age at the interview of PSID family survery in terms of month?) and divid by 12
+# take the difference (what's age at the interview of PSID family survery in terms of month?) 
 # note that I use the PSID family survery time because the independence and housing status variables are drawn from PSID family. 
-df_long$age_inmonth <- df_long$int_time - df_long$birth_time
-df_long$age <- as.integer(df_long$age_inmonth)
-table(df_long$age, useNA = "always")
+df_long$age <- df_long$int_time - df_long$birth_time  # age is the precise age variable
+df_long$age_int <- as.integer(df_long$age) # age_int is the smaller integer (for example, as.integer(6.6)=6)
+summary(df_long$age)
+table(df_long$age_int, useNA = "always")
 
 # View(df_long[,c("pid","age","psid_year","tas_year")])
-sum(is.na(df_long$age))/nrow(df_long) # 5% missing age at interview. These are just families that miss the family interview in certain years.
+sum(is.na(df_long$age))/nrow(df_long) # 4.2% missing age at interview. These are just families that miss the family interview in certain years.
 
-# only keep person-years when the repsondent is older than 18
-df_long <- df_long[df_long$age>=18 & !is.na(df_long$age),] # from 20594 to 13495. This step also dropps all person-years that are not captured by family interview
+# only keep person-waves when the repsondent is older than 18
+df_long <- df_long[df_long$age>=18,]  # from 20594 to 14538 
+df_long <- df_long[!is.na(df_long$age),] # from 14538 to 13676 ||| (14538-13676)/14538=0.05929289
+# This step drops all person-waves that are not captured by family interview because any person-wave missing age is equivalent to missing the whole interview.
 sum(is.na(df_long$age))
 
 # View(df_long[,c("pid","age","status")])
@@ -731,17 +760,18 @@ table(df_long$status, useNA = "always")
 # First, there is nobody who has NAs in any year
 # the spacing value for the first interview is the gap between age 18 and age at first interview
 # for later interviews (given the respondent is observed for more than once), the spacing value is the gap between this interview and the last interview
+# note that in the loop I used the age variable which is the precise age, not the integer version
 df_long$gap <- NA
 for (i in 1:length(unique(df_long$pid))) {
   
-  status_vector <- df_long$status[df_long$pid==unique(df_long$pid)[i]] 
-  gap_vector <- rep(NA, length(status_vector))
-  gap_vector[1] <- df_long$age_inmonth[df_long$pid==unique(df_long$pid)[i]][1]-18
+  status_vector <- df_long$status[df_long$pid==unique(df_long$pid)[i]] # the vector of status in each available wave for person i
+  gap_vector <- rep(NA, length(status_vector)) # the corresponding empty vector for gap length between each wave
+  gap_vector[1] <- df_long$age[df_long$pid==unique(df_long$pid)[i]][1]-18  # the first gap is the gap between age 18 and the first interview
   
-  if (length(status_vector)>1) {
+  if (length(status_vector)>1) {    # because some people may only have one wave of record
     
     for (j in 2:length(status_vector)) {
-      gap_vector[j] <- df_long$age_inmonth[df_long$pid==unique(df_long$pid)[i]][j]-df_long$age_inmonth[df_long$pid==unique(df_long$pid)[i]][j-1]
+      gap_vector[j] <- df_long$age[df_long$pid==unique(df_long$pid)[i]][j]-df_long$age[df_long$pid==unique(df_long$pid)[i]][j-1]  # the age difference between two waves
     }
   }
   df_long$gap[df_long$pid==unique(df_long$pid)[i]] <- gap_vector
@@ -749,57 +779,102 @@ for (i in 1:length(unique(df_long$pid))) {
 summary(df_long$gap)
 hist(df_long$gap)
 
-pid_checking <- df_long$pid[df_long$gap>5]
-View(df_long[df_long$pid%in%pid_checking,c("pid","wave","age","status")])
-# based on visual insepection. there are clearly a lot of people who skipped wave 4 and wave 5 hence get to wave 6 directly from wave 3
-table(df_long$wave)
-View(ind[ind$pid%in%pid_checking,c("pid","status_05","status_07","status_09","status_11","status_13","status_15","status_17")]) 
-# some age are missing in wave 4 and age and status are missing together in wave 5
-# look into this issue!!!
- 
+# View(df_long[df_long$gap>=5, c("pid","byear","age","psid_year","wave","status","gap")])
+# View(df_long[df_long$pid==1066032, c("pid","byear","psid_year","wave","gap")])  An example
+nrow(df_long[df_long$gap>=4,c("pid","byear","age","psid_year","wave","status","gap")])  # 127 person-waves have more than 4 years elapsed
+nrow(df_long[df_long$gap>=5,c("pid","byear","age","psid_year","wave","status","gap")])  # 12 person-waves have more than 5 years elapsed
+pid_long_gap <- df_long$pid[df_long$gap>=4]
+# View(df_long[df_long$pid %in% pid_long_gap, c("pid","byear","age","psid_year","wave","status","gap")])
 
+# note that I can't use TAS housing record to complement the status records in PSID Family, because TAS does not tell me whether the person is independent.
 
-
-# only keep person-years with valid outcome status
-df_long <- df_long[!is.na(df_long$status),]  # from 14566 to 10667
+# only keep person-waves with valid outcome status
+sum(is.na(df_long$status))  # 90 person-waves missing status
+table(is.na(df_long$status), df_long$wave) # again, all missing values are in wave 4. I've thought about this, nothing I can do. (AY 12/08/19)
+df_long <- df_long[!is.na(df_long$status),]  # from 13676 to 13586
 
 # only keep Blacks and Whites
-df_long <- df_long[df_long$race%in%c(1,2),] # from 10667 to 8807
+table(df_long$race, useNA = "always")  
+table(df_long$pid[is.na(df_long$race)]) # there are only 10 person-waves and 3 people missing race. 
+# The race variable here is constructed from TAS, it's probably possible to find race information for these people from another dataset, but I think it's not worth it.
+df_long <- df_long[df_long$race%in%c(1,2),] # from 13586 to 11281
 # then generate a black vs white dummy
-df_long$black <- df_long$race
+df_long$black <- df_long$race-1
 
-sum(is.na(df_long$age_tas_int)) # check. zero NA for age at interview
+# View(df_long[,c("pid","wave","owning_wave","housing")])
 
-# View(df_long[,c("pid","wave","ownership_wave","housing")])
+# Now I generate two seperate datasets for ownership transition and renting transition
+df_long_own <- df_long
+df_long_rent <- df_long
 
-table(df_long$ownership_wave)
-sum(table(df_long$ownership_wave)) # 1311
-# only keep wave that are or before the wave the respondent made the first-time homeownership transition and person-waves for people who have neve made the transition
-# if df_long$wave=0, the person has never made the transition
-df_long <- df_long[df_long$wave<=df_long$ownership_wave | is.na(df_long$ownership_wave),] # from 8807 to 8512
-sum(table(df_long$ownership_wave))
+# First, the owning dataset
+sum(table(df_long_own$owning_wave)) # 2913 person-waves where the persons have made the ownership transition
+# only keep wave that are or before the wave the respondent made the first-time homeownership transition and person-waves for people who have never made the transition
+# if df_long_own$wave=NA, the person has never made the transition
+df_long_own <- df_long_own[df_long_own$wave<=df_long_own$owning_wave | is.na(df_long_own$owning_wave),] # from 11281 to 10508
+sum(table(df_long_own$owning_wave)) # 2140
 
-## indicator for homeownership as in the EHA setting
-df_long$ownership <- NA
-df_long$ownership[is.na(df_long$ownership_wave)] <- 0 # people who've never made the transition to homeownership
-df_long$ownership[df_long$wave==df_long$ownership_wave & !is.na(df_long$ownership_wave)] <- 1  # wave of the transition
-df_long$ownership[df_long$wave<df_long$ownership_wave & !is.na(df_long$ownership_wave)] <- 0 # waves before the transition
-table(df_long$ownership)
-# 0: 7337; 1:321
-table(df_long$ownership)[2]/nrow(df_long)  # fraction of ownership person-years
+# indicator for homeownership as in the discrete-time EHA setting
+df_long_own$ownership <- NA
+df_long_own$ownership[is.na(df_long_own$owning_wave)] <- 0 # people who've never made the transition to homeownership
+df_long_own$ownership[df_long_own$wave==df_long_own$owning_wave & !is.na(df_long_own$owning_wave)] <- 1  # wave of the transition
+df_long_own$ownership[df_long_own$wave<df_long_own$owning_wave & !is.na(df_long_own$owning_wave)] <- 0 # waves before the transition
+table(df_long_own$ownership, useNA = "always")
+# 0: 10008; 1:500
+table(df_long_own$ownership)[2]/nrow(df_long_own)  # fraction of ownership person-waves: 0.04758279 
+table(df_long_own$ownership, df_long_own$black)
 
-# View(df_long[,c("pid","wave","ownership_wave","housing","ownership")])
+# generate a variable for the age at which the respondent made the renting transition
+table(df_long_own$renting_wave, useNA = "always")
+sum(!is.na(df_long_own$renting_wave))/nrow(df_long_own)   # two thirds of the person-waves are post-renting
+df_long_own$age_rent_int <- NA
 
-# what happens to people who reach age 28 but do not establish economic independence. 
-# will they only be a non-reference-person in the main file?
-# need to download 2013\2015\2017 PSID family files (2013 should be the first year some TAS respondents reach 28)
-table(df_long$headwife[df_long$age==28])
-table(df_long$headwife[df_long$age==27])
+sum(df_long$renting_wave>df_long$owning_wave, na.rm = T)
+sum(df_long$renting_wave<df_long$owning_wave, na.rm = T)
+table(df_long$renting_wave, df_long$owning_wave)
+
+for (i in 1:length(unique(df_long_own$pid))) {
+  
+  renting_wave <- df_long_own$renting_wave[df_long_own$pid==unique(df_long_own$pid)[i]][1]  # the renting wave for person i. It's a time-constant variale, so I just take the first of it.
+  owning_wave <- df_long_own$owning_wave[df_long_own$pid==unique(df_long_own$pid)[i]][1]
+  
+  if (!is.na(renting_wave) & renting_wave<owning_wave) {   # if the person has ever made the first renting transition and it happened before the first owning transition
+    
+    df_long_own$age_rent_int[df_long_own$pid==unique(df_long_own$pid)[i]] <- 
+      df_long_own$age_int[df_long_own$pid==unique(df_long_own$pid)[i] & 
+                            df_long_own$wave==df_long_own$renting_wave[df_long_own$pid==unique(df_long_own$pid)[i]]]       # Note that I'm using the age integer instead of the precise age
+    
+  }
+  else {df_long_own$age_rent_int[df_long_own$pid==unique(df_long_own$pid)[i]] <- NA}
+}
+
+
+# Second, the renting dataset
+sum(table(df_long_rent$renting_wave)) # 7633 person-waves where where the persons have made the renting transition
+# only keep wave that are or before the wave the respondent made the first-time renting transition and person-waves for people who have never made the transition
+# if df_long_rent$wave=NA, the person has never made the transition
+df_long_rent <- df_long_rent[df_long_rent$wave<=df_long_rent$renting_wave | is.na(df_long_rent$renting_wave),] # from 11281 to 7995
+# Although there are more people making the renting transition, there are also more person-waves spent after the transition. 
+# So, after dropping, there are less person-waves in the renting data than the owning data. 
+sum(table(df_long_rent$renting_wave)) # 4347
+
+## indicator for renting as in the discrete-time EHA setting
+df_long_rent$renting <- NA
+df_long_rent$renting[is.na(df_long_rent$renting_wave)] <- 0 # people who've never made the transition to homeownership
+df_long_rent$renting[df_long_rent$wave==df_long_rent$renting_wave & !is.na(df_long_rent$renting_wave)] <- 1  # wave of the transition
+df_long_rent$renting[df_long_rent$wave<df_long_rent$renting_wave & !is.na(df_long_rent$renting_wave)] <- 0 # waves before the transition
+table(df_long_rent$renting, useNA = "always")
+# 0: 6545; 1:1450
+table(df_long_rent$renting)[2]/nrow(df_long_rent)  # fraction of renting person-waves: 0.1813634
+table(df_long_rent$renting, df_long_rent$black)
+
+# Note: quoting the TAS user guide:
+# CDS youth will participate in TAS data collection until they reach age 28, regardless of whether they have become members of Core PSID.
 
 ##### models
 
 # format factor variables
-factor_var <- c("black","wave","age")
+factor_var <- c("black","wave","age_int")
 
 for (i in 1:length(factor_var)) {
   df_long[,colnames(df_long)%in%factor_var[i]] <- as.factor(df_long[,colnames(df_long)%in%factor_var[i]])
@@ -808,6 +883,7 @@ for (i in 1:length(factor_var)) {
 class(df_long$black)
 
 model <- glm(ownership ~ black + wave + age, data = df_long, family = binomial(link = "logit"))
+model <- glm(ownership ~ black + wave + age, data = df_long, family = binomial(link = "cloglog"))
 
 summary(model)
 
