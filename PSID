@@ -665,7 +665,7 @@ flow_plot_df$Group <- factor(flow_plot_df$group,
                                          "owning to renting", "owning to neither"))
 # note that the order of the labels needs to be consistent with the order of the values in the y vector
 
-ggplot(flow_plot_df, aes(x=x, y=y, group=group)) +
+ggplot(flow_plot_df, aes(x=x, y=y, group=Group)) +
   geom_line(aes(linetype=Group, color=Group)) +
   geom_point() +
   xlab("Wave") +
@@ -697,7 +697,7 @@ df_inuse <- df[,c("pid","male","byear","bmonth","race","owning_wave","renting_wa
 # Note that the order of the time-varying variables in the selection step above matters!!!
 # Geez, what a tricky trap! If the order of each variable is not consistent, the reshape command will fuck up!
 
-# then generate the time-varting variable names in long form
+# then generate the time-varying variable names in long form
 time_varying_long <- c("ref", "psid_year", "psid_month", "tas_year", "tas_month","inde_renting","inde_owning","status")
 
 # get the corresponding variable names in wide form
@@ -754,7 +754,7 @@ table(df_long$renting_wave, useNA = "always")
 
 sum(df_long$renting_wave>df_long$owning_wave, na.rm = T)  # 441. Some people made the owning transition before they also made the renting transition
 sum(df_long$renting_wave<df_long$owning_wave, na.rm = T)  # 2415
-table(df_long$renting_wave, df_long$owning_wave)
+table(df_long$renting_wave, df_long$owning_wave) # reassuringly, nobody made the two transitions at the same time
 
 df_long$age_rent <- NA
 
@@ -775,18 +775,35 @@ for (i in 1:length(unique(df_long$pid))) {
       df_long$age[df_long$pid==unique(df_long$pid)[i] & 
                     df_long$wave==df_long$renting_wave[df_long$pid==unique(df_long$pid)[i]]]
   }
-  # all the other scenarios, age at rent is NA
+  # all the other scenarios, age at renting is NA
   else {df_long$age_rent[df_long$pid==unique(df_long$pid)[i]] <- NA}
 }
 
 summary(df_long$age_rent) # The number of NAs is the sum of NAs in renting and the number of person-waves of people who owned before rented (8652+441)
 sum(df_long$age_rent<18, na.rm = T) # 21 person-years
 table(df_long$status, df_long$age_int) # Correspondingly, 3 people made the renting transition at integer age 17. 
+# In order to make my life easier in later steps (otherwise it's very tricky), I'll just drop these 3 people.
+df_long <- df_long[df_long$age_rent>=18 | is.na(df_long$age_rent),]  # from 20594 to 20573
+
+# Similarly, generate a variable for the age at which the respondent made the owning transition
+# It's much easier because I no longer need to worry about reversed order of renting and owning
+table(df_long$owning_wave, useNA = "always")
+df_long$age_own <- NA
+for (i in 1:length(unique(df_long$pid))) {
+  
+  owning_wave <- df_long$owning_wave[df_long$pid==unique(df_long$pid)[i]][1]
+  
+  df_long$age_own[df_long$pid==unique(df_long$pid)[i]] <- 
+    df_long$age[df_long$pid==unique(df_long$pid)[i] & 
+                  df_long$wave==df_long$owning_wave[df_long$pid==unique(df_long$pid)[i]]] 
+}
+summary(df_long$age_own) # The NAs are just the NAs in owning_wave
+sum(df_long$age_own<18, na.rm = T) # nobody
 
 
 # only keep person-waves when the repsondent is older than 18 
-df_long <- df_long[df_long$age>=18,]  # from 20594 to 14538 
-df_long <- df_long[!is.na(df_long$age),] # from 14538 to 13676 ||| (14538-13676)/14538=0.05929289
+df_long <- df_long[df_long$age>=18,]  # from 20573 to 14527
+df_long <- df_long[!is.na(df_long$age),] # from 14527 to 13665 ||| (14527-13665)/14527=0.05933778
 # This step drops all person-waves that are not captured by family interview because any person-wave missing age is equivalent to missing the whole interview.
 sum(is.na(df_long$age))
 
@@ -821,21 +838,47 @@ hist(df_long$gap)
 # View(df_long[df_long$pid==1066032, c("pid","byear","psid_year","wave","gap")])  An example
 nrow(df_long[df_long$gap>=4,c("pid","byear","age","psid_year","wave","status","gap")])  # 127 person-waves have more than 4 years elapsed
 nrow(df_long[df_long$gap>=5,c("pid","byear","age","psid_year","wave","status","gap")])  # 12 person-waves have more than 5 years elapsed
-pid_long_gap <- df_long$pid[df_long$gap>=4]
+# pid_long_gap <- df_long$pid[df_long$gap>=4]
 # View(df_long[df_long$pid %in% pid_long_gap, c("pid","byear","age","psid_year","wave","status","gap")])
 
-# note that I can't use TAS housing record to complement the status records in PSID Family, because TAS does not tell me whether the person is independent.
+# generate a variable indicating the gap before the renting wave. 
+df_long$renting_gap <- NA
+for (i in 1:length(unique(df_long$pid))) {
+  
+  renting_wave <- df_long$renting_wave[df_long$pid==unique(df_long$pid)[i]][1]  # the renting wave for person i. It's a time-constant variale, so I just take the first of it.
+  renting_gap <- df_long$gap[df_long$pid==unique(df_long$pid)[i] & df_long$wave==renting_wave]  # the gap at the wave when the respondent made the renting transition. Never-renters just get NA.
+  df_long$renting_gap[df_long$pid==unique(df_long$pid)[i]] <- renting_gap
+  
+}
+summary(df_long$renting_gap)
+summary(df_long$renting_wave)
+summary(df_long$gap)
+table(is.na(df_long_own$renting_gap), is.na(df_long_own$age_rent))  # control for renting_gap will not lead to loss of sample on the top of the use of age_rent
 
+# Similarly, generate a variable indicating the gap before the owning wave. 
+df_long$owning_gap <- NA
+for (i in 1:length(unique(df_long$pid))) {
+  
+  owning_wave <- df_long$owning_wave[df_long$pid==unique(df_long$pid)[i]][1]  # the owning wave for person i. It's a time-constant variale, so I just take the first of it.
+  owning_gap <- df_long$gap[df_long$pid==unique(df_long$pid)[i] & df_long$wave==owning_wave]  # the gap at the wave when the respondent made the owning transition. Never-owners just get NA.
+  df_long$owning_gap[df_long$pid==unique(df_long$pid)[i]] <- owning_gap
+  
+}
+summary(df_long$owning_gap)
+summary(df_long$owning_wave)
+summary(df_long$gap)
+
+# note that I can't use TAS housing record to complement the status records in PSID Family, because TAS does not tell me whether the person is independent.
 # only keep person-waves with valid outcome status
 sum(is.na(df_long$status))  # 90 person-waves missing status
 table(is.na(df_long$status), df_long$wave) # again, all missing values are in wave 4. I've thought about this, nothing I can do. (AY 12/08/19)
-df_long <- df_long[!is.na(df_long$status),]  # from 13676 to 13586
+df_long <- df_long[!is.na(df_long$status),]  # from 13665 to 13575
 
 # only keep Blacks and Whites
 table(df_long$race, useNA = "always")  
 table(df_long$pid[is.na(df_long$race)]) # there are only 10 person-waves and 3 people missing race. 
 # The race variable here is constructed from TAS, it's probably possible to find race information for these people from another dataset, but I think it's not worth it.
-df_long <- df_long[df_long$race%in%c(1,2),] # from 13586 to 11281
+df_long <- df_long[df_long$race%in%c(1,2),] # from 13575 to 11270
 # then generate a black vs white dummy
 df_long$black <- df_long$race-1
 
@@ -847,7 +890,7 @@ df_long_rent <- df_long
 
 # First, the owning dataset
 sum(table(df_long_own$owning_wave)) # 2913 person-waves where the persons have made the ownership transition
-# only keep wave that are or before the wave the respondent made the first-time homeownership transition and person-waves for people who have never made the transition
+# only keep wave that is or before the wave the respondent made the first-time homeownership transition and person-waves for people who have never made the transition
 # if df_long_own$wave=NA, the person has never made the transition
 df_long_own <- df_long_own[df_long_own$wave<=df_long_own$owning_wave | is.na(df_long_own$owning_wave),] # from 11281 to 10508
 sum(table(df_long_own$owning_wave)) # 2140
@@ -858,23 +901,12 @@ df_long_own$ownership[is.na(df_long_own$owning_wave)] <- 0 # people who've never
 df_long_own$ownership[df_long_own$wave==df_long_own$owning_wave & !is.na(df_long_own$owning_wave)] <- 1  # wave of the transition
 df_long_own$ownership[df_long_own$wave<df_long_own$owning_wave & !is.na(df_long_own$owning_wave)] <- 0 # waves before the transition
 table(df_long_own$ownership, useNA = "always")
-# 0: 10008; 1:500
-table(df_long_own$ownership)[2]/nrow(df_long_own)  # fraction of ownership person-waves: 0.04758279 
+# 0: 9997; 1:500
+table(df_long_own$ownership)[2]/nrow(df_long_own)  # fraction of ownership person-waves: 0.04763266 
 table(df_long_own$ownership, df_long_own$black)
 
 
-
-summary(df_long_own$age_rent)
-
-# also need a variable indicating the gap before the renting wave. I guess is gonna be tricky.
-
-
 # Second, the renting dataset
-
-# For the renting data, I drop the three people whose renting transition is before age 18 (they made it right before turning 18), imposing a clean and clear risk set
-df_long_rent <- df_long_rent[df_long_rent$age_rent>=18,]  # from 11281 to 11270
-# Nobody made the owning transition before turning 18, so no problem there. 
-
 sum(table(df_long_rent$renting_wave)) # 7294 person-waves where where the persons have made the renting transition
 # only keep wave that are or before the wave the respondent made the first-time renting transition and person-waves for people who have never made the transition
 # if df_long_rent$wave=NA, the person has never made the transition
@@ -896,6 +928,140 @@ table(df_long_rent$renting, df_long_rent$black)
 # Note: quoting the TAS user guide:
 # CDS youth will participate in TAS data collection until they reach age 28, regardless of whether they have become members of Core PSID.
 
+### generate a wide-form data again for various usage
+# generate variables for age at last interview
+table(df_long$wave, useNA = "always")
+df_long$age_last <- NA
+for (i in 1:length(unique(df_long$pid))) {
+  
+  last_wave <- tail(df_long$wave[df_long$pid==unique(df_long$pid)[i]], 1)  # the last wave 
+  
+  df_long$age_last[df_long$pid==unique(df_long$pid)[i]] <- 
+    df_long$age[df_long$pid==unique(df_long$pid)[i] & 
+                  df_long$wave==last_wave] 
+}
+summary(df_long$age_last) 
+
+# generate integer version of timing variables
+df_long$age_rent_int <- as.integer(df_long$age_rent)
+df_long$age_own_int <- as.integer(df_long$age_own)
+df_long$age_last_int <- as.integer(df_long$age_last)
+
+table(df_long$age_rent_int, useNA = "always")
+table(df_long$age_own_int, useNA = "always")
+table(df_long$age_last_int, useNA = "always")
+
+df_wide <- df_long[,c("pid","black","age_rent_int","age_own_int","age_last_int")]
+length(unique(df_wide$pid))  # 2417
+df_wide <- df_wide[!duplicated(df_wide),]
+nrow(df_wide)  # verified
+# View(df_wide)
+sum(df_wide$age_rent_int>df_wide$age_last_int, na.rm = T)
+sum(df_wide$age_own_int>df_wide$age_last_int, na.rm = T)
+sum(df_wide$age_rent_int>df_wide$age_own_int, na.rm = T) # verified. no bad behavior. 
+
+## now, plot hazard rates
+max(df_wide$age_last_int)
+table(df_wide$age_last_int)
+
+table(df_long_rent$age_int)  # there is only one person-wave at age 34. It's better not to calculate the 34yro hazard rate
+table(df_long_rent$age_int, df_long_rent$black)
+
+hazard_renting <- rep(NA, length(18:33))
+cumulative_death_lost <- 0
+for (i in 1:16) {
+  
+  death <- sum(df_wide$age_rent_int==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  hazard_renting[i] <- death/(nrow(df_wide)-cumulative_death_lost)
+  cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
+  
+} 
+plot(hazard_renting)
+
+hazard_owning <- rep(NA, length(18:33))
+cumulative_death_lost <- 0
+for (i in 1:16) {
+  
+  death <- sum(df_wide$age_own_int==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  hazard_owning[i] <- death/(nrow(df_wide)-cumulative_death_lost)
+  cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
+  
+} 
+plot(hazard_owning)
+
+# by race
+hazard_renting_black <- rep(NA, length(18:33))
+cumulative_death_lost <- 0
+for (i in 1:16) {
+  
+  death <- sum(df_wide$age_rent_int[df_wide$black==1]==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int & df_wide$black==1)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  hazard_renting_black[i] <- death/(nrow(df_wide[df_wide$black==1,])-cumulative_death_lost)
+  cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
+  
+} 
+plot(hazard_renting_black)
+
+hazard_owning_black <- rep(NA, length(18:33))
+cumulative_death_lost <- 0
+for (i in 1:16) {
+  
+  death <- sum(df_wide$age_own_int[df_wide$black==1]==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int & df_wide$black==1)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  hazard_owning_black[i] <- death/(nrow(df_wide[df_wide$black==1,])-cumulative_death_lost)
+  cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
+  
+} 
+plot(hazard_owning_black)
+
+hazard_renting_white <- rep(NA, length(18:33))
+cumulative_death_lost <- 0
+for (i in 1:16) {
+  
+  death <- sum(df_wide$age_rent_int[df_wide$black==0]==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int & df_wide$black==0)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  hazard_renting_white[i] <- death/(nrow(df_wide[df_wide$black==0,])-cumulative_death_lost)
+  cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
+  
+} 
+plot(hazard_renting_white)
+
+hazard_owning_white <- rep(NA, length(18:33))
+cumulative_death_lost <- 0
+for (i in 1:16) {
+  
+  death <- sum(df_wide$age_own_int[df_wide$black==0]==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int & df_wide$black==0)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  hazard_owning_white[i] <- death/(nrow(df_wide[df_wide$black==0,])-cumulative_death_lost)
+  cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
+  
+} 
+plot(hazard_owning_white)
+
+x <- rep(seq(18:33), 2)
+y <- c(hazard_renting_black, hazard_renting_white) 
+group <- c(rep("Black", 16), rep("White", 16))
+hazard_plot_df <- as.data.frame(cbind(x, y, group), stringsAsFactors = F)
+hazard_plot_df$y <- as.numeric(hazard_plot_df$y)
+hazard_plot_df$x <- as.numeric(hazard_plot_df$x)
+# View(hazard_plot_df)
+
+x <- rep(seq(18:33), 2)
+y <- c(hazard_owning_black, hazard_owning_white) 
+group <- c(rep("Black", 16), rep("White", 16))
+hazard_plot_df <- as.data.frame(cbind(x, y, group), stringsAsFactors = F)
+hazard_plot_df$y <- as.numeric(hazard_plot_df$y)
+hazard_plot_df$x <- as.numeric(hazard_plot_df$x)
+
+ggplot(hazard_plot_df, aes(x=x, y=y, group=group)) +
+  geom_point() + 
+  geom_smooth(aes(linetype=group, color=group)) 
+
+table(df_long_rent$age_int)
+# I've thought about the relationship between the age distribution in the long form data and the hazard in the wide form
+
 ##### models
 
 colnames(df_long_own)
@@ -914,25 +1080,25 @@ for (i in 1:length(factor_var)) {
 
 ### Actual models
 
-model1 <- glm(renting ~ black + wave + age_int + gap, data = df_long_rent, family = binomial(link = "logit"))
+model1 <- glm(renting ~ black + gap + wave + age_int, data = df_long_rent, family = binomial(link = "logit"))
 summary(model1)
 
-model2 <- glm(renting ~ black + wave + age_int + gap, data = df_long_rent, family = binomial(link = "cloglog"))
+model2 <- glm(renting ~ black + gap + wave + age_int, data = df_long_rent, family = binomial(link = "cloglog"))
 # Warning message: glm.fit: fitted probabilities numerically 0 or 1 occurred 
 summary(model2)
 
-model3 <- glm(ownership ~ black + wave + age_int + gap, data = df_long_own, family = binomial(link = "logit"))
+model3 <- glm(ownership ~ black + gap + wave + age_int, data = df_long_own, family = binomial(link = "logit"))
 summary(model3)
 exp(coef(model3))   # black: 0.3305  The odds for african americans is one third of the odds for whites
 
-model4 <- glm(ownership ~ black + wave + age_int + gap, data = df_long_own, family = binomial(link = "cloglog"))
+model4 <- glm(ownership ~ black + gap + wave + age_int, data = df_long_own, family = binomial(link = "cloglog"))
 summary(model4)
 
-model5 <- glm(ownership ~ black + age_rent + wave + age_int + gap, data = df_long_own, family = binomial(link = "logit"))
+model5 <- glm(ownership ~ black + age_rent + gap + renting_gap + wave + age_int, data = df_long_own, family = binomial(link = "logit"))
 summary(model5)  # This model is only for those who have made the renting transition and whose ownership transition, if has happened, is not before the renting transition
 exp(coef(model5))   # black: 0.3669  The odds for african americans is one third of the odds for whites
 
-model6 <- glm(ownership ~ black + age_rent + wave + age_int + gap, data = df_long_own, family = binomial(link = "cloglog"))
+model6 <- glm(ownership ~ black + age_rent + gap + renting_gap + wave + age_int, data = df_long_own, family = binomial(link = "cloglog"))
 summary(model6)
 
 
