@@ -157,7 +157,7 @@ ind$ref17[!ind$ER34503%in%c(10,20,22,0)] <- 0
 ind$ref17[ind$ER34503%in%c(10,20,22)] <- 1 # Reference Person, legal spouse, partner  
 # this time consistent with TA170006 in TAS
 
-## independet renting status indicator
+## indepintervalset renting status indicator
 ind$inde_renting_05 <- NA
 ind$inde_renting_05[!(ind$ref05==1 & ind$own05==0) & !is.na(ind$ref05) & !is.na(ind$own05)] <- 0  # not missing information, but not in independent renting
 ind$inde_renting_05[ind$ref05==1 & ind$own05==0] <- 1  # independent renting (head/wife status + renting)
@@ -964,103 +964,140 @@ sum(df_wide$age_rent_int>df_wide$age_own_int, na.rm = T) # verified. no bad beha
 max(df_wide$age_last_int)
 table(df_wide$age_last_int)
 
-table(df_long_rent$age_int)  # there is only one person-wave at age 34. It's better not to calculate the 34yro hazard rate
-table(df_long_rent$age_int, df_long_rent$black)
+intervals <- length(18:max(df_wide$age_last_int))  # number of age intervals in the data
 
-hazard_renting <- rep(NA, length(18:33))
+hazard_renting <- rep(NA, intervals)
+at_risk_renting <- rep(NA, intervals)
 cumulative_death_lost <- 0
-for (i in 1:16) {
+for (i in 1:intervals) {
   
-  death <- sum(df_wide$age_rent_int==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
-  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  death <- sum(df_wide$age_rent_int==i+intervals, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int)]==i+intervals)  # number of lost to censoring. (the age at last interview for those who never made the transition)
   hazard_renting[i] <- death/(nrow(df_wide)-cumulative_death_lost)
+  at_risk_renting[i] <- nrow(df_wide)-cumulative_death_lost  # get a record of number of people at risk at each age
   cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
   
 } 
 plot(hazard_renting)
 
-hazard_owning <- rep(NA, length(18:33))
+hazard_owning <- rep(NA, intervals)
+at_risk_owning <- rep(NA, intervals)
 cumulative_death_lost <- 0
-for (i in 1:16) {
+for (i in 1:intervals) {
   
-  death <- sum(df_wide$age_own_int==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
-  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  death <- sum(df_wide$age_own_int==i+intervals, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int)]==i+intervals)  # number of lost to censoring. (the age at last interview for those who never made the transition)
   hazard_owning[i] <- death/(nrow(df_wide)-cumulative_death_lost)
+  at_risk_owning[i] <- nrow(df_wide)-cumulative_death_lost
   cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
   
 } 
 plot(hazard_owning)
 
 # by race
-hazard_renting_black <- rep(NA, length(18:33))
+hazard_renting_black <- rep(NA, intervals)
+at_risk_renting_black <- rep(NA, intervals)
 cumulative_death_lost <- 0
-for (i in 1:16) {
+for (i in 1:intervals) {
   
-  death <- sum(df_wide$age_rent_int[df_wide$black==1]==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
-  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int & df_wide$black==1)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  death <- sum(df_wide$age_rent_int[df_wide$black==1]==i+intervals, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int & df_wide$black==1)]==i+intervals)  # number of lost to censoring. (the age at last interview for those who never made the transition)
   hazard_renting_black[i] <- death/(nrow(df_wide[df_wide$black==1,])-cumulative_death_lost)
+  at_risk_renting_black[i] <- nrow(df_wide[df_wide$black==1,])-cumulative_death_lost
   cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
   
 } 
 plot(hazard_renting_black)
 
-hazard_owning_black <- rep(NA, length(18:33))
+hazard_owning_black <- rep(NA, intervals)
+at_risk_owning_black <- rep(NA, intervals)
 cumulative_death_lost <- 0
-for (i in 1:16) {
+for (i in 1:intervals) {
   
-  death <- sum(df_wide$age_own_int[df_wide$black==1]==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
-  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int & df_wide$black==1)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  death <- sum(df_wide$age_own_int[df_wide$black==1]==i+intervals, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int & df_wide$black==1)]==i+intervals)  # number of lost to censoring. (the age at last interview for those who never made the transition)
   hazard_owning_black[i] <- death/(nrow(df_wide[df_wide$black==1,])-cumulative_death_lost)
+  at_risk_owning_black[i] <- nrow(df_wide[df_wide$black==1,])-cumulative_death_lost
   cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
   
 } 
 plot(hazard_owning_black)
 
-hazard_renting_white <- rep(NA, length(18:33))
+hazard_renting_white <- rep(NA, intervals)
+at_risk_renting_white <- rep(NA, intervals)
 cumulative_death_lost <- 0
-for (i in 1:16) {
+for (i in 1:intervals) { 
   
-  death <- sum(df_wide$age_rent_int[df_wide$black==0]==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
-  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int & df_wide$black==0)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  death <- sum(df_wide$age_rent_int[df_wide$black==0]==i+intervals, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_rent_int & df_wide$black==0)]==i+intervals)  # number of lost to censoring. (the age at last interview for those who never made the transition)
   hazard_renting_white[i] <- death/(nrow(df_wide[df_wide$black==0,])-cumulative_death_lost)
+  at_risk_renting_white[i] <- nrow(df_wide[df_wide$black==0,])-cumulative_death_lost 
   cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
   
-} 
+}  
 plot(hazard_renting_white)
 
-hazard_owning_white <- rep(NA, length(18:33))
+hazard_owning_white <- rep(NA, intervals)
+at_risk_owning_white <- rep(NA, intervals)
 cumulative_death_lost <- 0
-for (i in 1:16) {
+for (i in 1:intervals) {
   
-  death <- sum(df_wide$age_own_int[df_wide$black==0]==i+17, na.rm = T)   # number of "death". Using the survivial analysis terminology
-  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int & df_wide$black==0)]==i+17)  # number of lost to censoring. (the age at last interview for those who never made the transition)
+  death <- sum(df_wide$age_own_int[df_wide$black==0]==i+intervals, na.rm = T)   # number of "death". Using the survivial analysis terminology
+  lost <- sum(df_wide$age_last_int[is.na(df_wide$age_own_int & df_wide$black==0)]==i+intervals)  # number of lost to censoring. (the age at last interview for those who never made the transition)
   hazard_owning_white[i] <- death/(nrow(df_wide[df_wide$black==0,])-cumulative_death_lost)
+  at_risk_owning_white[i] <- nrow(df_wide[df_wide$black==0,])-cumulative_death_lost
   cumulative_death_lost <- cumulative_death_lost + death + lost  # additive deaths + lost in this round
   
 } 
 plot(hazard_owning_white)
 
-x <- rep(seq(18:33), 2)
+x <- rep(seq(18,(17+intervals)), 2)
 y <- c(hazard_renting_black, hazard_renting_white) 
-group <- c(rep("Black", 16), rep("White", 16))
-hazard_plot_df <- as.data.frame(cbind(x, y, group), stringsAsFactors = F)
-hazard_plot_df$y <- as.numeric(hazard_plot_df$y)
-hazard_plot_df$x <- as.numeric(hazard_plot_df$x)
-# View(hazard_plot_df)
+Group <- c(rep("Black", intervals), rep("White", intervals))
+at_risk <- c(at_risk_renting_black, at_risk_renting_white)
+hazard_plot_df_renting <- as.data.frame(cbind(x, y, Group, at_risk), stringsAsFactors = F)
+hazard_plot_df_renting$y <- as.numeric(hazard_plot_df_renting$y)
+hazard_plot_df_renting$x <- as.numeric(hazard_plot_df_renting$x)
+# View(hazard_plot_df_renting)
+# nobody at risk at age 34 for both Whites and Blacks, so I drop the two rows where nobody is at risk.
+hazard_plot_df_renting <- hazard_plot_df_renting[hazard_plot_df_renting$at_risk!=0,]
 
-x <- rep(seq(18:33), 2)
+ggplot(hazard_plot_df_renting, aes(x=x, y=y, group=Group)) +
+  geom_point(aes(shape=Group)) + 
+  geom_smooth(aes(linetype=Group, color=Group), method = "loess") +  
+  xlab("Age") +
+  ylab("Hazard Rate") +
+  ggtitle("Smoothed Hazard Estimates for Renting") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(limits = c(-0.01, 0.21)) + 
+  scale_x_continuous(breaks = seq(18, 33, 3))
+
+
+x <- rep(seq(18,(17+intervals)), 2)
 y <- c(hazard_owning_black, hazard_owning_white) 
-group <- c(rep("Black", 16), rep("White", 16))
-hazard_plot_df <- as.data.frame(cbind(x, y, group), stringsAsFactors = F)
-hazard_plot_df$y <- as.numeric(hazard_plot_df$y)
-hazard_plot_df$x <- as.numeric(hazard_plot_df$x)
+Group <- c(rep("Black", intervals), rep("White", intervals))
+at_risk <- c(at_risk_owning_black, at_risk_owning_white)
+hazard_plot_df_owning <- as.data.frame(cbind(x, y, Group, at_risk), stringsAsFactors = F)
+hazard_plot_df_owning$y <- as.numeric(hazard_plot_df_owning$y)
+hazard_plot_df_owning$x <- as.numeric(hazard_plot_df_owning$x)
+# View(hazard_plot_df_owning)
+# nobody at risk at age 34 Whites, only one Black person at risk at 34. I again drop these two rows.
+hazard_plot_df_owning <- hazard_plot_df_owning[hazard_plot_df_owning$at_risk>1,]
 
-ggplot(hazard_plot_df, aes(x=x, y=y, group=group)) +
-  geom_point() + 
-  geom_smooth(aes(linetype=group, color=group)) 
+ggplot(hazard_plot_df_owning, aes(x=x, y=y, group=Group)) +
+  geom_point(aes(shape=Group)) + 
+  geom_smooth(aes(linetype=Group, color=Group), method = "loess") +  
+  xlab("Age") +
+  ylab("Hazard Rate") +
+  ggtitle("Smoothed Hazard Estimates for Owning") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(limits = c(-0.02, 0.22), breaks = seq(0.00, 0.20, 0.05)) + 
+  scale_x_continuous(breaks = seq(18, 33, 3))
+
 
 table(df_long_rent$age_int)
 # I've thought about the relationship between the age distribution in the long form data and the hazard in the wide form
+# The wide-form data is like an expanded version of the long-form. In the long-form, the age spacing between every two record is not 1.
 
 ##### models
 
