@@ -1,3 +1,4 @@
+
 rm(list=ls()) 
 setwd("~/Desktop/Research/Housing project/PSID_working")
 options(scipen=999)
@@ -1251,21 +1252,28 @@ for (i in 1:length(factor_var)) {
 
 model1 <- glm(renting ~ black + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_rent, family = binomial(link = "logit"))
 summary(model1)
+nrow(df_long_rent)-120
 
 model2 <- glm(renting ~ black + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_rent, family = binomial(link = "cloglog"))
-# Warning message: glm.fit: fitted probabilities numerically 0 or 1 occurred 
 summary(model2)
 
 model3 <- glm(ownership ~ black + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "logit"))
 summary(model3)
 exp(coef(model3))   # black: 0.3305  The odds for african americans is one third of the odds for whites
 nrow(df_long_own)-192
-
-model3.1 <- glm(ownership ~ black + housing_age16 + black*housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "logit"))
-summary(model3.1)
+# Checkpoint. Think about the extremely high correlation between diff_state==2 and the outcomes.
+# Should be because of the way they are constructed. (state is NA -> outcome=0)
+# Or perhaps because it's correlation with the NA category in housing_age16?
 
 model4 <- glm(ownership ~ black + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "cloglog"))
 summary(model4)
+
+model5 <- glm(ownership ~ black + housing_age16 + black*housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "logit"))
+summary(model5)
+nrow(df_long_own)-192
+
+model6 <- glm(ownership ~ black + housing_age16 + black*housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "cloglog"))
+summary(model6)
 
 #
 df_long_own_post_renting <- df_long_own[as.numeric(df_long_own$wave)>df_long_own$renting_wave & !is.na(df_long_own$age_rent),]
@@ -1275,15 +1283,15 @@ nrow(df_long_own_post_renting)
 # The person must not experience owning before renting
 # The person-wave is strictly after renting transition
 
-model5 <- glm(ownership ~ black + age_rent + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own_post_renting, family = binomial(link = "logit"))
-summary(model5)  
+model7 <- glm(ownership ~ black + age_rent + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own_post_renting, family = binomial(link = "logit"))
+summary(model7)  
 # This model is only for those who have made the renting transition and whose ownership transition, if has happened, is not before the renting transition
 # Also, for this model, I only use person-waves that have already made the renting transition
-exp(coef(model5))   # black: 0.3669  The odds for african americans is one third of the odds for whites
+exp(coef(model7))   # black: 0.3669  The odds for african americans is one third of the odds for whites
 nrow(df_long_own_post_renting)-78   # 2774
 
-model6 <- glm(ownership ~ black + age_rent + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own_post_renting, family = binomial(link = "cloglog"))
-summary(model6)
+model8 <- glm(ownership ~ black + age_rent + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own_post_renting, family = binomial(link = "cloglog"))
+summary(model8)
 
 
 
