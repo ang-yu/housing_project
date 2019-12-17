@@ -1,23 +1,46 @@
 
 rm(list=ls()) 
-
 setwd("~/Desktop/Research/Housing project/PSID_working")
+options(scipen=999)
 
 library("haven")
 library("tidyverse")
 
-options(scipen=999)
-
-# df is the cross-year merged data of TAS, PSID individual file, and PSID family file for TAS interviwees
+# df is the cross-year (user-generated) merged data of TAS, PSID individual file, and PSID family file for TAS interviwees
 df <- read_dta("/Users/Ang/Desktop/Data/J266390/J266390.dta")
 df <- as.data.frame(df)  # By default, the read_dta function creates a tbl_df object instead of regular dataframe
 
 # ind <- read_dta("/Users/Ang/Desktop/Data/ind2017er/ind.dta")
-# ind_keep <- c("ER30001","ER30002","ER34201","ER34101","ER34001","ER33901","ER33801","ER34301","ER34501","ER34203","ER34303","ER34503","ER34103","ER34003","ER33903","ER33803")
+# ind_keep <- c("ER30001","ER30002","ER34201","ER34101","ER34001","ER33901","ER33801","ER34301","ER34501","ER34203","ER34303","ER34503","ER34103","ER34003","ER33903","ER33803","ER33501","ER33601","ER33701")
+# # These are interview numbers used for merging
 # ind <- ind[,colnames(ind) %in% ind_keep]
 # ind <- as.data.frame(ind)
 # save(ind, file = "ind_inuse.RData")
 load("ind_inuse.RData")
+
+# fam99 <- read_dta("/Users/Ang/Desktop/Data/fam1999er/fam1999.dta")
+# fam99_keep <- c("ER13040","ER13002","ER13005","ER13008","ER13006")
+# # ER13040: "own/rent or what"; ER13002: 1999 family ID; ER13005: current state; ER13008: int year; ER13006: int month
+# fam99 <- fam99[,colnames(fam99) %in% fam99_keep]
+# fam99 <- as.data.frame(fam99)
+# save(fam99, file = "fam99_inuse.RData")
+load("fam99_inuse.RData")
+
+# fam01 <- read_dta("/Users/Ang/Desktop/Data/fam2001er/fam2001.dta")
+# fam01_keep <- c("ER17043","ER17002","ER17005","ER17011","ER17009")
+# # ER17043: "own/rent or what"; ER17002: 2001 family ID; ER17005: current state; ER17011: int year; ER17009: int month
+# fam01 <- fam01[,colnames(fam01) %in% fam01_keep]
+# fam01 <- as.data.frame(fam01)
+# save(fam01, file = "fam01_inuse.RData")
+load("fam01_inuse.RData")
+
+# fam03 <- read_dta("/Users/Ang/Desktop/Data/fam2003er/fam2003.dta")
+# fam03_keep <- c("ER21042","ER21002","ER21004","ER21014","ER21012")
+# # ER21042: "own/rent or what"; ER21002: 2003 family ID; ER21004: current state; ER21014: int year; ER21012: int month
+# fam03 <- fam03[,colnames(fam03) %in% fam03_keep]
+# fam03 <- as.data.frame(fam03)
+# save(fam03, file = "fam03_inuse.RData")
+load("fam03_inuse.RData")
 
 # fam05 <- read_dta("/Users/Ang/Desktop/Data/fam2005er/fam2005.dta")
 # fam05_keep <- c("ER25028","ER25002","ER25004","ER25014","ER25012")
@@ -79,6 +102,9 @@ sum(ind$ER34201 %in% fam13$ER53002)
 sum(ind$ER34301 %in% fam15$ER60002)
 sum(ind$ER34501 %in% fam17$ER66002)
 
+ind <- left_join(ind, fam99, by = c("ER33501" = "ER13002"))
+ind <- left_join(ind, fam01, by = c("ER33601" = "ER17002"))
+ind <- left_join(ind, fam03, by = c("ER33701" = "ER21002"))
 ind <- left_join(ind, fam05, by = c("ER33801" = "ER25002"))
 ind <- left_join(ind, fam07, by = c("ER33901" = "ER36002"))
 ind <- left_join(ind, fam09, by = c("ER34001" = "ER42002"))
@@ -86,8 +112,23 @@ ind <- left_join(ind, fam11, by = c("ER34101" = "ER47302"))
 ind <- left_join(ind, fam13, by = c("ER34201" = "ER53002"))
 ind <- left_join(ind, fam15, by = c("ER34301" = "ER60002"))
 ind <- left_join(ind, fam17, by = c("ER34501" = "ER66002"))
+# don't worry about the warning messages
 
 # housing status variables
+ind$own99 <- NA 
+ind$own99[ind$ER13040==5] <- 0   # renting
+ind$own99[ind$ER13040==1] <- 1   # owning
+ind$own99[ind$ER13040==8] <- 2  # neither
+
+ind$own01 <- NA 
+ind$own01[ind$ER17043==5] <- 0   # renting
+ind$own01[ind$ER17043==1] <- 1   # owning
+ind$own01[ind$ER17043==8] <- 2  # neither
+
+ind$own03 <- NA 
+ind$own03[ind$ER21042==5] <- 0   # renting
+ind$own03[ind$ER21042==1] <- 1   # owning
+ind$own03[ind$ER21042==8] <- 2  # neither
 
 ind$own05 <- NA 
 ind$own05[ind$ER25028==5] <- 0   # renting
@@ -102,27 +143,27 @@ ind$own07[ind$ER36028==8] <- 2   # neither
 ind$own09 <- NA 
 ind$own09[ind$ER42029==5] <- 0   # renting
 ind$own09[ind$ER42029==1] <- 1   # owning
-ind$own09[ind$ER42029==8] <- 2 
+ind$own09[ind$ER42029==8] <- 2   # neither
 
 ind$own11 <- NA 
 ind$own11[ind$ER47329==5] <- 0   # renting
 ind$own11[ind$ER47329==1] <- 1   # owning
-ind$own11[ind$ER47329==8] <- 2
+ind$own11[ind$ER47329==8] <- 2   # neither
 
 ind$own13 <- NA 
 ind$own13[ind$ER53029==5] <- 0   # renting
 ind$own13[ind$ER53029==1] <- 1   # owning
-ind$own13[ind$ER53029==8] <- 2
+ind$own13[ind$ER53029==8] <- 2   # neither
 
 ind$own15 <- NA 
 ind$own15[ind$ER60030==5] <- 0   # renting
 ind$own15[ind$ER60030==1] <- 1   # owning
-ind$own15[ind$ER60030==8] <- 2
+ind$own15[ind$ER60030==8] <- 2   # neither
 
 ind$own17 <- NA 
 ind$own17[ind$ER66030==5] <- 0   # renting
 ind$own17[ind$ER66030==1] <- 1   # owning
-ind$own17[ind$ER66030==8] <- 2 
+ind$own17[ind$ER66030==8] <- 2   # neither
 
 # head/wife/reference person status
 
@@ -157,7 +198,7 @@ ind$ref17[!ind$ER34503%in%c(10,20,22,0)] <- 0
 ind$ref17[ind$ER34503%in%c(10,20,22)] <- 1 # Reference Person, legal spouse, partner  
 # this time consistent with TA170006 in TAS
 
-## indepintervalset renting status indicator
+## independent renting status indicator
 ind$inde_renting_05 <- NA
 ind$inde_renting_05[!(ind$ref05==1 & ind$own05==0) & !is.na(ind$ref05) & !is.na(ind$own05)] <- 0  # not missing information, but not in independent renting
 ind$inde_renting_05[ind$ref05==1 & ind$own05==0] <- 1  # independent renting (head/wife status + renting)
@@ -564,6 +605,10 @@ df$psid_year_3 <- df$ER42014
 df$psid_year_2 <- df$ER36014
 df$psid_year_1 <- df$ER25014
 
+df$psid_year_n1 <- df$ER21014    # 2003
+df$psid_year_n2 <- df$ER17011    # 2001
+df$psid_year_n3 <- df$ER13008    # 1999
+
 df$psid_month_7 <- df$ER66012
 df$psid_month_6 <- df$ER60012
 df$psid_month_5 <- df$ER53012
@@ -571,6 +616,10 @@ df$psid_month_4 <- df$ER53012
 df$psid_month_3 <- df$ER42012
 df$psid_month_2 <- df$ER36012
 df$psid_month_1 <- df$ER25012
+
+df$psid_month_n1 <- df$ER21012    # 2003
+df$psid_month_n2 <- df$ER17009    # 2001
+df$psid_month_n3 <- df$ER13006    # 1999
 
 ## the wave at which the respondent made the first independent renting transition
 # (I checked. Using "status" to construct retning_wave and owning_wave will produce the same results)
@@ -670,14 +719,74 @@ ggplot(flow_plot_df, aes(x=x, y=y, group=Group)) +
   geom_point() +
   xlab("Wave") +
   ylab("Percentage") +
-  ggtitle("Rates of Transitions across States") +
+  ggtitle("Figure 1. Rates of Transitions Across States") +
   theme(plot.title = element_text(hjust = 0.5)) +
   labs(caption = "Note: Renting and owning refer to independent renting and owning.\nAnd most people do not change state between two waves.") +
   theme(plot.caption = element_text(hjust = 0)) +
-  scale_y_continuous(breaks = c(2.5, 5, 7.5, 10, 12.5))
+  scale_y_continuous(breaks = c(0, 2.5, 5, 7.5, 10, 12.5))
 
 # df_clean <- df[!is.na(df$status_05) & !is.na(df$status_07) & !is.na(df$status_09) & !is.na(df$status_11) & !is.na(df$status_13) & !is.na(df$status_15) & !is.na(df$status_17), ]
 # from 2942 to 2364
+
+### Now I get the covariates
+
+# family homeownership at age 16
+table(df$byear)  # 1983 to 1997, which means I need to get family homeownership information from 1999 to 2013
+# But the PSID family iterview is also conducted every other year
+# So this is what I'm doing:
+# 1983/1984 + 16 = 1999/2000 using 1999 data
+# 1985/1986 + 16 = 2001/2002 using 2001 data, etc.
+# Checkpoint. I should try to use the nearest information (the wave that's collected at a nearest time point to the birthday) for this variable. 
+# For this, I need to get even older waves, because the nearest interview date for some people may be before 1999.
+# Alternatively, use an average of adolescent years. Consider these issues! (AY 12/16/19)
+table(df$own99, useNA = "always")
+table(df$own01, useNA = "always")
+table(df$own03, useNA = "always")
+df$housing_age16 <- NA
+df$housing_age16[df$byear==1983 | df$byear==1984] <- df$own99[df$byear==1983 | df$byear==1984]
+df$housing_age16[df$byear==1985 | df$byear==1986] <- df$own01[df$byear==1985 | df$byear==1986]
+df$housing_age16[df$byear==1987 | df$byear==1988] <- df$own03[df$byear==1987 | df$byear==1988]
+df$housing_age16[df$byear==1989 | df$byear==1990] <- df$own05[df$byear==1989 | df$byear==1990]
+df$housing_age16[df$byear==1991 | df$byear==1992] <- df$own07[df$byear==1991 | df$byear==1992]
+df$housing_age16[df$byear==1993 | df$byear==1994] <- df$own09[df$byear==1993 | df$byear==1994]
+df$housing_age16[df$byear==1995 | df$byear==1996] <- df$own11[df$byear==1995 | df$byear==1996]
+df$housing_age16[df$byear==1997] <- df$own13[df$byear==1997]
+table(df$housing_age16, useNA = "always")
+df$housing_age16[is.na(df$housing_age16)] <- 2
+# 0: renting; 1: owning; 2: neither or NA
+
+# rename the state variables
+df$fam_state99 <- df$ER13005
+df$fam_state01 <- df$ER17005
+df$fam_state03 <- df$ER21004
+df$fam_state05 <- df$ER25004
+df$fam_state07 <- df$ER36004
+df$fam_state09 <- df$ER42004
+df$fam_state11 <- df$ER47304
+df$fam_state13 <- df$ER53004
+df$fam_state15 <- df$ER60004
+df$fam_state17 <- df$ER66004
+
+df$tas_state05 <- df$TA050005 
+df$tas_state07 <- df$TA070005
+df$tas_state09 <- df$TA090005
+df$tas_state11 <- df$TA110005
+df$tas_state13 <- df$TA130005
+df$tas_state15 <- df$TA150005
+df$tas_state17 <- df$TA170005
+
+# state at age 16
+# The NAs in each fam_state variable comes from the absence of the PSID family interview in that year.
+df$state_age16 <- NA
+df$state_age16[df$byear==1983 | df$byear==1984] <- df$fam_state99[df$byear==1983 | df$byear==1984]
+df$state_age16[df$byear==1985 | df$byear==1986] <- df$fam_state01[df$byear==1985 | df$byear==1986]
+df$state_age16[df$byear==1987 | df$byear==1988] <- df$fam_state03[df$byear==1987 | df$byear==1988]
+df$state_age16[df$byear==1989 | df$byear==1990] <- df$fam_state05[df$byear==1989 | df$byear==1990]
+df$state_age16[df$byear==1991 | df$byear==1992] <- df$fam_state07[df$byear==1991 | df$byear==1992]
+df$state_age16[df$byear==1993 | df$byear==1994] <- df$fam_state09[df$byear==1993 | df$byear==1994]
+df$state_age16[df$byear==1995 | df$byear==1996] <- df$fam_state11[df$byear==1995 | df$byear==1996]
+df$state_age16[df$byear==1997] <- df$fam_state13[df$byear==1997]
+table(df$state_age16, useNA = "always")  # 0 is U.S. territory or foreign country
 
 
 ### set up the long data form
@@ -692,13 +801,16 @@ df_inuse <- df[,c("pid","male","byear","bmonth","race","owning_wave","renting_wa
               "psid_year_1","psid_year_2","psid_year_3","psid_year_4","psid_year_5","psid_year_6","psid_year_7", 
               "psid_month_1","psid_month_2","psid_month_3","psid_month_4","psid_month_5","psid_month_6","psid_month_7",
               "tas_year_1","tas_year_2","tas_year_3","tas_year_4","tas_year_5","tas_year_6","tas_year_7", 
-              "tas_month_1","tas_month_2","tas_month_3","tas_month_4","tas_month_5","tas_month_6","tas_month_7"
+              "tas_month_1","tas_month_2","tas_month_3","tas_month_4","tas_month_5","tas_month_6","tas_month_7",
+              "housing_age16","state_age16",
+              "fam_state05","fam_state07","fam_state09","fam_state11","fam_state13","fam_state15","fam_state17",
+              "tas_state05","tas_state07","tas_state09","tas_state11","tas_state13","tas_state15","tas_state17"
               )]
 # Note that the order of the time-varying variables in the selection step above matters!!!
 # Geez, what a tricky trap! If the order of each variable is not consistent, the reshape command will fuck up!
 
 # then generate the time-varying variable names in long form
-time_varying_long <- c("ref", "psid_year", "psid_month", "tas_year", "tas_month","inde_renting","inde_owning","status")
+time_varying_long <- c("ref", "psid_year", "psid_month", "tas_year", "tas_month","inde_renting","inde_owning","status","fam_state","tas_state")
 
 # get the corresponding variable names in wide form
 time_varying_wide <- lapply(time_varying_long, function(x) grep(x, colnames(df_inuse), value=T))
@@ -868,6 +980,25 @@ summary(df_long$owning_gap)
 summary(df_long$owning_wave)
 summary(df_long$gap)
 
+# generate a time-varying variable for current state
+table(df_long$fam_state, useNA = "always")
+table(df_long$tas_state, useNA = "always")
+
+df_long$tas_state[df_long$tas_state==99] <- NA # only one person-wave has 99 (NA) in tas_state
+
+table(df_long$ref, useNA = "always")
+df_long$own_state <- NA
+df_long$own_state[df_long$ref==1 & !is.na(df_long$ref)] <- df_long$fam_state[df_long$ref==1 & !is.na(df_long$ref)]  # if already ref person, use family state as personal state
+df_long$own_state[df_long$ref==0 & !is.na(df_long$ref)] <- df_long$tas_state[df_long$ref==0 & !is.na(df_long$ref)]  # otherwise, use TAS state as personal state
+table(df_long$own_state, useNA = "always")
+# generate an indicator for whether still live in the same state as age 16
+table(df_long$state_age16, useNA = "always")
+table(df_long$state_age16==df_long$own_state, useNA = "always")
+df_long$diff_state[df_long$state_age16==df_long$own_state & !is.na(df_long$state_age16) & !is.na(df_long$own_state)] <- 0  # same state as age 16
+df_long$diff_state[df_long$state_age16!=df_long$own_state & !is.na(df_long$state_age16) & !is.na(df_long$own_state)] <- 1  # different state
+df_long$diff_state[is.na(df_long$state_age16) | is.na(df_long$own_state)] <- 2  # NA
+table(df_long$diff_state)
+
 # note that I can't use TAS housing record to complement the status records in PSID Family, because TAS does not tell me whether the person is independent.
 # only keep person-waves with valid outcome status
 sum(is.na(df_long$status))  # 90 person-waves missing status
@@ -961,6 +1092,8 @@ sum(df_wide$age_own_int>df_wide$age_last_int, na.rm = T)
 sum(df_wide$age_rent_int>df_wide$age_own_int, na.rm = T) # verified. no bad behavior. 
 
 ## now, plot hazard rates
+# note that the way the hazard rate is calculated here assumes something:
+# for example, if one is not owner at 23, and is owner at 26 (and there is no record in between), then I assume this person becomes owner at exactly 26 (instead of 24 or 25).
 max(df_wide$age_last_int)
 table(df_wide$age_last_int)
 
@@ -1067,7 +1200,7 @@ ggplot(hazard_plot_df_renting, aes(x=x, y=y, group=Group)) +
   geom_smooth(aes(linetype=Group, color=Group), method = "loess") +  
   xlab("Age") +
   ylab("Hazard Rate") +
-  ggtitle("Smoothed Hazard Estimates for Renting") +
+  ggtitle("Figure 2. Smoothed Hazard Estimates for Renting") +
   theme(plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(-0.01, 0.21)) + 
   scale_x_continuous(breaks = seq(18, 33, 3))
@@ -1089,7 +1222,7 @@ ggplot(hazard_plot_df_owning, aes(x=x, y=y, group=Group)) +
   geom_smooth(aes(linetype=Group, color=Group), method = "loess") +  
   xlab("Age") +
   ylab("Hazard Rate") +
-  ggtitle("Smoothed Hazard Estimates for Owning") +
+  ggtitle("Figure 3. Smoothed Hazard Estimates for Owning") +
   theme(plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(-0.02, 0.22), breaks = seq(0.00, 0.20, 0.05)) + 
   scale_x_continuous(breaks = seq(18, 33, 3))
@@ -1105,7 +1238,7 @@ colnames(df_long_own)
 colnames(df_long_rent)
 
 # format factor variables
-factor_var <- c("black","male","wave","age_int","age_rnd")
+factor_var <- c("black","male","wave","age_int","age_rnd","diff_state","state_age16","housing_age16")
 
 for (i in 1:length(factor_var)) {
   df_long_own[,colnames(df_long_own)%in%factor_var[i]] <- as.factor(df_long_own[,colnames(df_long_own)%in%factor_var[i]])
@@ -1117,25 +1250,27 @@ for (i in 1:length(factor_var)) {
 
 ### Actual models
 
-model1 <- glm(renting ~ black + gap + wave + age_int, data = df_long_rent, family = binomial(link = "logit"))
+model1 <- glm(renting ~ black + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_rent, family = binomial(link = "logit"))
 summary(model1)
 
-model2 <- glm(renting ~ black + gap + wave + age_int, data = df_long_rent, family = binomial(link = "cloglog"))
+model2 <- glm(renting ~ black + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_rent, family = binomial(link = "cloglog"))
 # Warning message: glm.fit: fitted probabilities numerically 0 or 1 occurred 
 summary(model2)
 
-model3 <- glm(ownership ~ black + gap + wave + age_int, data = df_long_own, family = binomial(link = "logit"))
+model3 <- glm(ownership ~ black + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "logit"))
 summary(model3)
 exp(coef(model3))   # black: 0.3305  The odds for african americans is one third of the odds for whites
+nrow(df_long_own)-192
 
-model4 <- glm(ownership ~ black + gap + wave + age_int, data = df_long_own, family = binomial(link = "cloglog"))
+model4 <- glm(ownership ~ black + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "cloglog"))
 summary(model4)
 
-model5 <- glm(ownership ~ black + age_rent + gap + renting_gap + wave + age_int, data = df_long_own, family = binomial(link = "logit"))
+model5 <- glm(ownership ~ black + age_rent + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "logit"))
 summary(model5)  # This model is only for those who have made the renting transition and whose ownership transition, if has happened, is not before the renting transition
 exp(coef(model5))   # black: 0.3669  The odds for african americans is one third of the odds for whites
+nrow(df_long_own)-3686
 
-model6 <- glm(ownership ~ black + age_rent + gap + renting_gap + wave + age_int, data = df_long_own, family = binomial(link = "cloglog"))
+model6 <- glm(ownership ~ black + age_rent + housing_age16 + diff_state + gap + wave + age_int + state_age16, data = df_long_own, family = binomial(link = "cloglog"))
 summary(model6)
 
 
